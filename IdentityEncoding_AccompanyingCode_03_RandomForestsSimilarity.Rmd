@@ -1,0 +1,1905 @@
+---
+title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 03:</center>
+subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Random Forests Similarity </center>
+ &nbsp;
+author: |
+  <center style="font-style:normal;">
+  <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
+  &nbsp;
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
+  <br />
+  <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
+  &nbsp;
+date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
+  <br />
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+---
+
+<style type="text/css">
+
+a:hover {
+  color: #23527c !important;
+}
+
+h1.title {
+  font-size: 32px;
+  color: black;
+  font-weight: normal;
+}
+
+h1 {
+   color: black;
+   font-size: 26px;
+   font-weight: normal;
+}
+
+h2 {
+   color: black;
+   font-size: 24px;
+   font-weight: bold;
+}
+
+h3 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+h4 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+body{ /* Normal */
+      font-size: 18px;
+  }
+  
+code.r{ /* Code block */
+    font-size: 18px;
+}
+</style>
+
+```{r global options, include = FALSE}
+
+knitr::opts_knit$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+```
+
+Here we measured similarity of contact calls with supervised random forests. Acoustic measurements were obtained for calls across social scales and ranges, including:
+
+- Similarity measurements (pairwise similarity matrices)
+  1. Spectrographic cross-correlation on spectrograms (SPCC_spec)
+  2. Spectrographic cross-correlation on Mel-frequency cepstral coefficients (SPCC_ceps)
+  3. Dynamic time warping on dominant frequency time series (DTW_domf)
+  4. Dynamic time warping on spectral entropy time series (DTW_spen)
+  5. Dynamic time warping on multivariate time series (DTW_mult: similarity of dominant frequency and spectral entropy time series)
+
+- Structural measurements (non-pairwise matrices)
+  6. Descriptive statistics of Mel-frequency cepstral coefficients
+  7. Standard spectral acoustic measurements
+  8. Image measurements (WND-CHRM software measurements with spectrograms)
+
+Acoustic and image measurements were turned into features using multidimensional scaling (MDS) for pairwise similarity matrices, and principal components analysis (PCA) for non-pairwise acoustic and image measurements. MDS and PCA features were used as predictors for random forests.
+
+As in previous work<a href='#References'><sup>[1]</sup></a>, we used repeatedly sampled individuals to train and validate random forests classification models. In other words, individual identities were used as classes for random forests training. We split individuals from both ranges into training and validation datasets. Site-scale calls across ranges were reserved for prediction. The random forests proximity matrix was used as a similarity matrix for the site scale. 
+
+Our approach is modelled after Sara Keen's original paper<a href='#References'><sup>[2]</sup></a>, in which we used supervised random forests in a manner more similar to unsupervised models. Models were trained to classify calls back to individuals, and were provided new datasets for validation and prediction. However, as the validation and prediction datasets contained calls for different individuals, we ignored the resulting classifications and instead used the proximity matrix for subsequent analyses of hierarchical mapping patterns.
+
+The supervised random forests analysis documented here is very similar to previous work<a href='#References'><sup>[1]</sup></a>. However, we did not use t-Distributed Stochastic Neighbor Embedding to generate features. We only used the `ranger` package to perform random forests, and we did not include randomly generated variables as predictors for model validation. See the methods and appendix of the associated publication for more information about these analyses.
+
+Check out Github repositories from previous work for related analyses and code:
+
+- [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
+
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[3]</sup></a>
+
+Please cite the associated papers and the code (see DOIs on GitHub) if you find the code or analyses in these 3 repositories useful for your own research.
+
+```{r chunk1, warning = FALSE, message = FALSE}
+
+rm(list = ls())
+
+# Doublecheck whether the e1071 and MLmetrics packages are necessary
+X <- c("warbleR", "ggplot2", "caret", "MASS", "dtw", "pbapply", "graphics",  "dplyr", "data.table", "parallel", "grid", "gtable", "corrplot", "MLmetrics", "e1071", "mclust", "tidyverse", "Boruta", "edarf", "viridis", "knitr", "pracma", "ranger")
+
+invisible(lapply(X, library, character.only = TRUE))
+
+# Suppress summarise warnings from dplyr
+options(dplyr.summarise.inform = FALSE)
+
+path <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Data"
+gpath <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Graphics"
+seed <- 401
+cores <- parallel::detectCores() - 2
+
+```
+
+Read in the extended selection table (EST) that contains metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales.
+```{r echo = TRUE, eval = TRUE}
+
+nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
+glimpse(nat_int_est)
+
+```
+
+# Filtering out some calls
+
+I dropped individual scale calls that had been added to the site scale (1 call per known repeatedly sampled individual in the final individual scale dataset, suffix "site_scale").
+```{r chunk3}
+
+# 31 calls with the suffix "_site_scale". Not all of these belonged to the individuals in the final individual scale dataset, since some individuals that we repeatedly sampled were dropped due to low sample sizes after pre-processing
+nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>% 
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  pull(sound.files) %>%
+  length()
+
+# Get the "_site_scale" calls for the final dataset of known repeatedly sampled individuals
+indiv_ids <- nat_int_est %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  pull(Bird_ID) %>%
+  unique()
+
+# 17 total: 8 native and 9 introduced range
+indiv_ids
+
+# INT-UM1, INT-UM6, and INT-UM19 were each the sole bird sampled at sites BART, ASCA, and CAME, respectively. These sites were not included at the site scale, so these individuals did not have any "_site_scale" calls 
+# This leaves 14 calls to drop, each representing a call for a different repeatedly sampled individual included in the site scale dataset
+drop_is_calls <- nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  dplyr::filter(Bird_ID %in% indiv_ids) %>%
+  pull(sound.files)
+
+length(drop_is_calls)
+
+# Checking, looks good
+nat_int_est %>%
+  as_tibble() %>% 
+  dplyr::filter(sound.files %in% drop_is_calls) %>%
+  dplyr::select(sound.files, Bird_ID) %>%
+  kable(align = rep("c", nrow(.)))
+
+# Drop these calls from the extended selection table and continue with analyses
+# nat_int_est <- nat_int_est %>%
+  # dplyr::filter(!sound.files %in% drop_is_calls)
+
+# Don't use tidyverse since I want to filter both the data frame and the .wav objects in the EST
+nat_int_est <- nat_int_est[-grep(paste(paste("^", drop_is_calls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files), ]
+
+# 1582 calls remain out of the original 1596 calls read in above
+dim(nat_int_est)
+class(nat_int_est)
+
+```
+
+# Spectrographic cross-correlation (SPCC) similarity
+
+SPCC similarity based on spectrograms and Mel-frequency cepstral coefficients was performed for all calls in an earlier script. See HierarchicalMapping_AdditionalMaterials03_SPCC_VisualClassificationPrep.Rmd. 
+
+# Random forests similarity 
+
+## Training plan
+
+Known repeatedly sampled individuals (individual scale calls) were selected for model training. The same repeatedly sampled native range individuals were be used as in previously published results<a href='#References'><sup>[1]</sup></a>. These native range individuals were all from the same site. We did not sample sufficent individuals repeatedly at the same site in the introduced range, so for this range we used known repeatedly sampled individuals with the most calls. We excluded ASCA_2019 as this individual had no social group members (a lone parakeet in El Paso, TX). In sum, we used 4 individuals per range with the highest numbers of calls for model training, and introduced range birds used for training were sampled from different sites and years. 
+```{r chunk4}
+
+nat_int_est %>%
+  filter(social_scale == "Individual") %>%
+  group_by(site_year, Bird_ID) %>%
+  summarise(num_calls = length(sound.files)) %>%
+  ungroup()
+
+# Native range: NAT-AAT, NAT-UM1, NAT-UM2, NAT-UM4 (all from site 1145)
+
+# Introduced range: INT-UM1 (BART_2011), INT-UM7 (ELEM_2019), INT-UM5 (ROBE_2011), INT-UM19 (CAME_2004)
+
+train_indivs <- c("NAT-AAT", "NAT-UM1", "NAT-UM2", "NAT-UM4", "INT-UM19", "INT-UM1", "INT-UM5", "INT-UM7")
+
+train_indivs
+
+```
+
+## Obtaining similarity measurements for random forests
+
+### SPCC similarity
+
+SPCC was performed on spectrograms and Mel-frequency cepstral coefficients in the previous script with the full dataset of calls and an earlier version of R and warbleR. I performed SPCC again with the call dataset after dropping the individual scale calls included at the site scale (see above). 
+
+SPCC on spectrograms was used to provide a complementary similarity measurement to random forests. We also used SPCC similarity matrices (obtained from spectrograms and cepstral coefficients) as random forests predictors. SPCC features will be generated later in this script using multidimensional scaling.
+
+```{r chunk5, eval = FALSE}
+
+dim(nat_int_est)
+
+xc_mat <- warbleR::cross_correlation(nat_int_est, wl = 378, ovlp = 90, wn = "hanning", cor.method = "pearson", parallel = cores, na.rm = FALSE, bp = c(0.5, 9), output = "cor.mat", path = path, type = "spectrogram", method = 1)
+str(xc_mat)
+
+# Change dimension names of each matrix to facilitate pattern searching# 
+wavs <- dimnames(xc_mat)[[1]]
+head(wavs)
+
+wavs <- gsub(".WAV-1", ".WAV", wavs)
+head(wavs)
+
+# Substitute the SPCC matrix dimension names
+dimnames(xc_mat) <- list(wavs, wavs)
+
+# Checking, looks good
+# head(dimnames(xc_mat)[[1]])
+
+saveRDS(xc_mat, file.path(path, "xc_mat_nat_int_1582calls.RDS"))
+
+xc_mat_mfcc <- warbleR::cross_correlation(nat_int_est, wl = 378, ovlp = 90, wn = "hanning", cor.method = "pearson", parallel = cores, na.rm = FALSE, bp = c(0.5, 9), output = "cor.mat", path = path, type = "mfcc", nbands = 40, method = 1)
+
+# Change dimension names
+dimnames(xc_mat_mfcc) <- list(wavs, wavs)
+
+# Checking, looks good
+head(dimnames(xc_mat_mfcc)[[1]])
+
+str(xc_mat_mfcc)
+
+saveRDS(xc_mat_mfcc, file.path(path, "xc_mat_nat_int_mfcc_1582calls.RDS"))
+
+```
+
+### Dynamic time warping similarity
+
+We measured spectral entropy and dominant frequency as time series, which we converted to similarity measurements using dynamic time warping (DTW_domf and DTW_spen). We extracted 100 time points per time series. We also performed multivariate DTW using both spectral entropy and dominant frequency time series (DTW_mult). 
+```{r chunk4, eval = FALSE}
+
+# Extract spectral entropy across signals as a time series
+# Set img to TRUE to see time series plotted over spectrograms
+# sp_ts <- sp.en.ts(nat_int_est, wl = 378, length.out = 100, wn = "hanning", ovlp = 90, bp = c(0.5, 9), threshold = 15, img = FALSE, parallel = cores, img.suffix = "spec_ent", pb = TRUE, clip.edges = TRUE, leglab = "spec_ent", sp.en.range = c(0.5, 9), path = path, flim = c(0, 10))
+# str(sp_ts)
+
+sp_ts <- warbleR::freq_ts(nat_int_est, type = "entropy", wl = 378, length.out = 100, wn = "hanning", ovlp = 90, bp = c(0.5, 9), threshold = 15, img = FALSE, parallel = cores, img.suffix = "spec_ent", pb = TRUE, clip.edges = TRUE, leglab = "spec_ent", sp.en.range = c(0.5, 9), path = path, flim = c(0, 10))
+str(sp_ts)
+
+# Ensure that the selec column isn't included in dtw
+sp_ts$selec <- as.character(sp_ts$selec)
+sapply(sp_ts, is.numeric)
+
+# Perform dynamic time warping (DTW) on spectral entropy time series
+# Returns distances by default
+sp_ts_DTW <- dtw::dtwDist(sp_ts[, sapply(sp_ts, is.numeric)], sp_ts[, sapply(sp_ts, is.numeric)], window.type = "none", open.end = FALSE, path = path)
+
+# Change dimension names of each matrix to facilitate pattern searching 
+wavs <- nat_int_est$sound.files
+# head(wavs)
+
+# Change the matrix dimension names
+dimnames(sp_ts_DTW) <- list(wavs, wavs)
+str(sp_ts_DTW)
+
+saveRDS(sp_ts_DTW, file.path(path, "DTW_spec_ent_1582calls.RDS"))
+
+# Extract dominant frequency as a time series 
+# Set img to TRUE to see time series plotted over spectrograms
+df_ts <- warbleR::freq_ts(nat_int_est, type = "dominant", wl = 378, length.out = 100, wn = "hanning", ovlp = 90, bp = c(0.5, 9), threshold = 15, img = FALSE, parallel = cores, img.suffix = "spec_ent", pb = TRUE, clip.edges = TRUE, path = path, flim = c(0, 10))
+str(df_ts)
+
+# Are there any NAs?
+any(apply(df_ts, c(1, 2), is.na))
+
+# Ensure that the selec column isn't included in dtw
+df_ts$selec <- as.character(df_ts$selec)
+sapply(df_ts, is.numeric)
+
+# Perform DTW on dominant frequency time series
+# Returns distances by default
+df_ts_DTW <- dtw::dtwDist(df_ts[, sapply(df_ts, is.numeric)], df_ts[, sapply(df_ts, is.numeric)], window.type = "none", open.end = FALSE, path = path)
+
+# Change the matrix dimension names
+dimnames(df_ts_DTW) <- list(wavs, wavs)
+str(df_ts_DTW)
+
+saveRDS(df_ts_DTW, file.path(path, "DTW_domf_1582calls.RDS"))
+
+# Perform multivariate DTW on spectral entropy and dominant frequency time series
+dim(sp_ts[, sapply(sp_ts, is.numeric)])
+ dim(df_ts[, sapply(df_ts, is.numeric)])
+
+# Returns distances by default
+# The first run used window.type = "none", which yielded zeroes off the diagonal
+# When using window.type = "sakoechiba" and window.size = 10, there were still zeroes off the diagonal for calls that are not duplicates (e.g 2017_05_21_PLVE_1005_10.WAV and 2017_05_21_PLVE_1005_11.WAV)
+ # I retained results from window.type = "none" and adjusted zeroes off the diagonal (see)
+mDTW <- warbleR::multi_DTW(ts.df1 = sp_ts, ts.df2 = df_ts, parallel = cores, window.type = "none", open.end = FALSE, scale = TRUE, dist.mat = TRUE, path = path)
+class(mDTW)
+
+# Change the matrix dimension names
+dimnames(mDTW) <- list(wavs, wavs)
+str(mDTW)
+
+saveRDS(mDTW, file.path(path, "DTW_multi_1582calls.RDS"))
+
+```
+
+### Acoustic structure measurements
+
+We collected measurements of contact call acoustic structure across the time, frequency and amplitude domains. These were standard spectral acoustic measurements (not pairwise similarity matrices).
+```{r chunk6, eval = FALSE}
+
+# Calculate acoustic parameters across calls
+# Exclude measurements related to fundamental frequency (harmonicity = FALSE)
+acs_params <- warbleR::spectro_analysis(nat_int_est, wl = 378, wl.freq = 378, bp = c(0.5, 9), ovlp = 90, fast = FALSE, parallel = cores, wn = "hanning", harmonicity = FALSE, path = path)
+glimpse(acs_params)
+
+# Make sure that the selections column is non-numeric and non-integer
+acs_params$selec <- as.character(acs_params$selec)
+glimpse(acs_params)
+
+# Write out acoustic parameters for later
+write.csv(acs_params, file.path(path, "acoustic_parameters_1582calls.csv"), row.names = FALSE)
+
+# We also collected acoustic measurements on Mel-frequency cepstral coefficients
+# Validated default numcep and nbands arguments by examining patterns of individual overlap and distinctiveness in exploratory visualizations 
+cep_coeff <- warbleR::mfcc_stats(nat_int_est, ovlp = 90, wl = 378, bp = c(0.5, 9), numcep = 12, nbands = 40, parallel = cores, path = path)
+glimpse(cep_coeff)
+
+cep_coeff$selec <- as.character(cep_coeff$selec)
+glimpse(cep_coeff)
+
+# Write out cepstral acoustic parameters for later
+write.csv(cep_coeff, file.path(path, "Mel_freq_cepstral_coefficients_1582calls.csv"), row.names = FALSE)
+
+```
+
+### Image Measurements
+
+We also used image processing software to measure image parameters that characterized acoustic structure. We ran the image-processing software WND-CHRM<a href='#References'><sup>[3]</sup></a> outside of R to measure thousands of image parameters across spectrograms. First, we made spectrograms for for WND-CHRM. I generated spectrograms with a smaller margin around calls than the last analysis (in which we used 0.01 seconds)<a href='#References'><sup>[1]</sup></a>. 
+```{r chunk7, eval = FALSE}
+
+dir.create(file.path(path, "wnd_chrm_imgs"))
+
+# Make spectrograms without labels or axes for image measurements by WND-CHRM
+# Moved image files into ~/img_processing manually
+specreator(nat_int_est, wn = "hanning", wl = 378, collev = seq(-53, 0, 1), flim = c(0.5, 9), ovlp = 90, line = FALSE, mar = 0.005, title.labels = NULL, res = 200, axisX = FALSE, axisY = FALSE, inner.mar = c(0, 0, 0, 0), it = "tiff", parallel = cores, path = file.path(path, "wnd_chrm_imgs"))
+
+```
+
+As in previous work with native range calls<a href='#References'><sup>[1]</sup></a>, we ran WND-CHRM in a working directory that contained the spectrograms generated above. We ran the following code in a bash shell to generate 2919 total variables per spectrogram: `wndchrm train -ml ./ image_parameters.fit`. The resulting dataset included:
+
+* 64 Chebyshev features
+* 64 Chebyshev-Fourier features
+* 7 Gabor wavelet feature values
+* 48 Radon transform features
+* 144 Multi-scale histograms
+* 288 Four moment features
+* 36 Tamura features
+* 28 Edge statistics
+* 34 Object statistics
+* 312 Zernicke and Haralick features
+
+* originally 1025 total image measurements<a href='#References'><sup>[3]</sup></a>
+The software has been updated more recently to include more parameters. 
+
+We read in the resulting .fit file for pre-processing.
+```{r chunk8, eval = FALSE}
+
+# The 1st 3 lines are a header
+fitf <- readLines(file.path(path, "wnd_chrm_imgs/image_parameters.fit"))[-c(1:3)]
+str(fitf)
+
+# Column names
+length(grep("\\[", fitf)) # 2919 for large parameter run
+cnms <- fitf[grep("\\[", fitf)]
+str(cnms)
+
+# Fix column names
+cnms <- gsub(" ", "", cnms, fixed = TRUE)
+cnms <- gsub(")", "", cnms, fixed = TRUE)
+cnms <- gsub("(", "", cnms, fixed = TRUE)
+cnms <- gsub("[", "_", cnms, fixed = TRUE)
+cnms <- gsub("]", "", cnms, fixed = TRUE)
+cnms[1:10]
+
+# Generate row names (spectrogram image file names)
+# Should have 1596 rows corresponding to 1596 total calls
+length(grep(".tiff$", readLines(file.path(path, "wnd_chrm_imgs/image_parameters.fit"))))
+rnms <- fitf[grep(".tiff$", fitf)]
+
+# x <- 1
+rnms <- sapply(1:length(rnms), function(x){
+  gsub(".WAV-1", ".WAV", gsub(".tiff", "", strsplit(rnms[x], split = "./")[[1]][2]))
+})
+str(rnms)
+
+# Extract data, has one extra line
+length(grep("\\[|.tiff$", fitf, invert = TRUE))
+dats <- fitf[grep("\\[|.tiff$", fitf, invert = TRUE)]
+
+# Remove any lines that are just a space, looks good
+dats <- dats[!dats == ""]
+str(dats)
+
+# Split the values by space
+# x <- 1
+dats <- sapply(1:length(dats), function(x){
+  as.numeric(strsplit(dats[x], split = " ")[[1]])
+})
+str(dats)
+# There are 2920 data points but only 2919 variable names
+
+# Recreate the fit file information as a data frame
+fit_df <- data.frame(sound.files = rnms, t(dats))
+names(fit_df) <- c("sound.files", cnms)
+str(fit_df)
+
+# The last column is unamed and just contains 0, so I dropped this (same as previous work)
+fit_df[1, 2916:2921]
+unique(fit_df[, 2921])
+
+fit_df <- fit_df[, -2921]
+str(fit_df)
+dim(fit_df)
+names(fit_df)[1:10]
+
+# Finally, image parameters have some NAs that cause prcomp to fail when attempting PCA, find and remove these
+nas <- sapply(1:nrow(fit_df), function(x){
+  which(is.na(fit_df[x, ]))
+})
+nas <- unique(unlist(nas)) # 3 variables have NAs
+
+fit_df2 <- fit_df[, -nas]
+dim(fit_df2)
+ncol(fit_df) - ncol(fit_df2) # 3 variables dropped, 2916 total
+names(fit_df2)[1:10] # sound.files is the first column
+
+# Dropped the 14 individual scale calls included at the site scale, since WND-CHRM was originally run on the full set of 1596 calls
+fit_df3 <- fit_df2 %>% 
+  dplyr::filter(!sound.files %in% drop_is_calls)
+dim(fit_df3) # looks good, 1582 calls
+
+write.csv(fit_df3, file.path(path, "image_parameters_1582calls.csv"), row.names = FALSE)
+
+```
+
+### Visual validation
+
+We validated the measurements above as predictors for random forests by visualizing patterns of acoustic variation within and among individuals. We used MDS and PCA to visualize calls in 2-dimensional acoustic space by similarity (pairwise matrices) or measurement type (non-pairwise matrices), which were the same methods used to derive features for random forests. The individuals used in these visuals are the same individuals used for random forests model training.
+
+Aesthetics for plots with calls by individual.
+```{r chunk9}
+
+# Initialize plotting parameters
+n <- 12
+# pie(rep(1, n), col = heat.colors(n))
+# pie(rep(1, n), col = topo.colors(n))
+# pie(rep(1, n), col = terrain.colors(n))
+# pie(rep(1, n), col = gray.colors(n))
+
+# Colors and shapes by individual, ordered by native and then introduced
+cols <- c(topo.colors(n)[2], topo.colors(n)[4], terrain.colors(n)[1], terrain.colors(n)[4], heat.colors(n)[1], heat.colors(n)[3], heat.colors(n)[5], heat.colors(n)[8])
+
+shps <- c(21, 22, 24, 23, 21, 25, 17, 15, 17) 
+
+```
+
+#### Visuals of similarity measurements
+
+Read in the SPCC and DTW similarity matrices.
+```{r chunk10}
+
+xc_mat_spec <- readRDS(file.path(path, "xc_mat_nat_int_1582calls.RDS"))
+# dim(xc_mat_spec) == nrow(nat_int_est)
+
+xc_mat_ceps <- readRDS(file.path(path, "xc_mat_nat_int_mfcc_1582calls.RDS"))
+# dim(xc_mat_ceps) == nrow(nat_int_est)
+
+dtw_domf <- readRDS(file.path(path, "DTW_domf_1582calls.RDS"))
+# dim(dtw_domf) == nrow(nat_int_est)
+
+dtw_spen <- readRDS(file.path(path, "DTW_spec_ent_1582calls.RDS"))
+# dim(dtw_spen) == nrow(nat_int_est)
+
+dtw_mult <- readRDS(file.path(path, "DTW_multi_1582calls.RDS"))
+# dim(dtw_mult) == nrow(nat_int_est)
+
+```
+
+Filtered similarity matrices by the individuals that were used for model training.
+```{r chunk12}
+
+# Find calls per each individual to be used for model training
+
+# Checking, looks good
+nat_int_est %>%
+  filter(social_scale == "Individual") %>%
+  filter(Bird_ID %in% train_indivs) %>%
+  group_by(Bird_ID) %>%
+  summarise(num_calls = length(sound.files))
+
+train_indivs
+
+calls <- nat_int_est %>%
+  filter(social_scale == "Individual") %>%
+  filter(Bird_ID %in% train_indivs) %>%
+  pull(sound.files)
+
+head(calls)
+
+# Subset matrices by these calls
+# Note that grepping on SPCC matrix dimension names and using these same indices across similarity measurements because calls were provided to similarity functions in the same order
+inds <- grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), dimnames(xc_mat_spec)[[1]])
+
+length(inds) == length(calls)
+length(calls)
+
+xc_mat_spec_tmp <- xc_mat_spec[inds, inds]
+str(xc_mat_spec_tmp)
+
+xc_mat_ceps_tmp <- xc_mat_ceps[inds, inds]
+str(xc_mat_ceps_tmp)
+
+dtw_domf_tmp <- dtw_domf[inds, inds]
+str(dtw_domf_tmp)
+
+dtw_spen_tmp <- dtw_spen[inds, inds]
+str(dtw_spen_tmp)
+
+dtw_mult_tmp <- dtw_mult[inds, inds]
+str(dtw_mult_tmp)
+
+```
+
+Performed MDS per filtered matrix (converted to distance matrices as appropriate), and generated a visual for validation per measurement type.
+```{r chunk13}
+
+method <- c("SPCC - spectrogram", "SPCC - cepstral coefficients", "DTW - dominant frequency", "DTW - spectral entropy", "DTW - multivariate")
+
+# Convert only the SPCC matrices to distance matrices
+# DTW matrices already contain distances
+mat_list <- list(1 - xc_mat_spec_tmp, 1- xc_mat_ceps_tmp, dtw_domf_tmp, dtw_spen_tmp, dtw_mult_tmp)
+# str(mat_list)
+str(mat_list[1])
+
+# x <- 3
+invisible(pblapply(1:length(mat_list), function(x){
+  
+  # Convert to a distance object for isoMDS
+  dist_mat <- stats::as.dist(mat_list[[x]], diag = TRUE, upper = TRUE)
+  # str(dist_mat)
+
+  # Reduce dimensionality of the SPCC matrix to visualize calls in 2D acoustic space
+  iso <- invisible(MASS::isoMDS(dist_mat, k = 2, maxit = 1000, trace = FALSE))
+  # str(iso)
+  
+  bird_ids <- nat_int_est$Bird_ID[grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files)]
+  # unique(bird_ids)
+  
+  mds_df <- data.frame(X = iso$points[, 1], Y = iso$points[, 2], indiv = bird_ids)
+  
+  # Order individuals by native and then introduced range
+  mds_df$indiv <- factor(mds_df$indiv, levels = train_indivs)
+
+  # Convex hull polygons per individual
+  hulls <- plyr::ddply(mds_df, "indiv", function(x){
+    x[chull(x$X, x$Y), ]
+  })
+
+  gg <- ggplot(mds_df, aes(x = X, y = Y)) + 
+  
+    geom_point(aes(color = indiv, fill = indiv, shape = indiv), size = 4) + 
+  
+    geom_polygon(data = hulls, aes(x = X, y = Y, fill = indiv, color = indiv), alpha = 0.2, size = 0.2) +
+  
+    scale_colour_manual(values = cols) + scale_fill_manual(values = cols) +
+    scale_shape_manual(values = shps) +
+    guides(color = guide_legend(title = "Individual", nrow = 2, byrow = TRUE), fill = guide_legend(title = "Individual"), shape = guide_legend(title = "Individual")) +
+    xlab("Dimension 1") + ylab("Dimension 2") + 
+    theme_bw() +
+    theme(legend.position = "top") +
+    ggtitle(method[x]) + 
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      legend.title = element_text(size = 14),
+      legend.text = element_text(size = 14)
+      )
+  
+  print(gg)
+  
+}))
+
+```
+
+### Visuals of structural measurements
+
+```{r chunk14}
+
+# Sound file names do not need to be changed
+acs_params <- read.csv(file.path(path, "acoustic_parameters_1582calls.csv")) %>%
+  mutate(
+    selec = as.character(selec)
+  )
+# nrow(acs_params) == nrow(nat_int_est)
+# glimpse(acs_params)
+
+cep_coeff <- read.csv(file.path(path, "Mel_freq_cepstral_coefficients_1582calls.csv")) %>%
+  mutate(
+    selec = as.character(selec)
+  )
+# nrow(cep_coeff) == nrow(nat_int_est)
+# glimpse(cep_coeff)
+
+img_params <- read.csv(file.path(path, "image_parameters_1582calls.csv"))
+# nrow(img_params) == nrow(nat_int_est)
+# glimpse(img_params[, 1:10])
+
+```
+
+Filtered acoustic and image measurements by the individuals used for model training.
+```{r chunk15}
+
+# Find calls per each individual to be used for model training
+
+# Checking, looks good
+nat_int_est %>%
+  filter(social_scale == "Individual") %>%
+  filter(Bird_ID %in% train_indivs) %>%
+  group_by(Bird_ID) %>%
+  summarise(num_calls = length(sound.files))
+
+train_indivs
+
+calls <- nat_int_est %>%
+  filter(social_scale == "Individual") %>%
+  filter(Bird_ID %in% train_indivs) %>%
+  pull(sound.files)
+head(calls)
+
+# Subset data frame by these calls
+acs_params_tmp <- acs_params[grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), acs_params$sound.files), ]
+# nrow(acs_params_tmp)
+# all(acs_params_tmp$sound.files %in% calls)
+# glimpse(acs_params_tmp)
+
+cep_coeff_tmp <- cep_coeff[grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), cep_coeff$sound.files), ]
+# nrow(cep_coeff_tmp)
+# all(cep_coeff_tmp$sound.files %in% calls)
+# glimpse(cep_coeff_tmp)
+
+img_params_tmp <- img_params[grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), img_params$sound.files), ]
+# nrow(img_params_tmp)
+# all(img_params_tmp$sound.files %in% calls)
+# glimpse(img_params_tmp[, 1:10])
+
+```
+
+Perform PCA and make a plot per measurement type.
+```{r chunk16}
+
+method <- c("Acoustic parameters", "Mel-frequency cepstral coefficients", "Image parameters")
+
+mat_list <- list(acs_params_tmp[, sapply(acs_params_tmp, is.numeric)], cep_coeff_tmp[, sapply(cep_coeff_tmp, is.numeric)], img_params_tmp[, sapply(img_params_tmp, is.numeric)])
+
+# x <- 3
+invisible(pblapply(1:length(mat_list), function(x){
+
+  # Pre-process using the caret package
+  pp_list <- caret::preProcess(mat_list[[x]], method = c("YeoJohnson", "zv", "nzv", "center", "scale"), thresh = 0.98, freqCut = 98/2, uniqueCut = 2)
+
+  pp <- predict(pp_list, mat_list[[x]])
+
+  # Perform PCA with base package for easier access of summary and loadings
+  pp_pca <- stats::prcomp(pp, center = FALSE)
+  # str(pp_pca)
+  
+  bird_ids <- nat_int_est$Bird_ID[grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files)]
+  # unique(bird_ids)
+
+  pca_df <- data.frame(X = pp_pca$x[, 1], Y = pp_pca$x[, 2], indiv = bird_ids)
+  
+  # Order individuals by native and then introduced range
+  pca_df$indiv <- factor(pca_df$indiv, levels = train_indivs)
+
+  # Convex hull polygons per indiviual
+  hulls <- plyr::ddply(pca_df, "indiv", function(x){
+    x[chull(x$X, x$Y), ]
+  })
+
+  gg <- ggplot(pca_df, aes(x = X, y = Y)) + 
+  
+    geom_point(aes(color = indiv, fill = indiv, shape = indiv), size = 4) + 
+  
+    geom_polygon(data = hulls, aes(x = X, y = Y, fill = indiv, color = indiv), alpha = 0.2, size = 0.2) +
+  
+    scale_colour_manual(values = cols) + scale_fill_manual(values = cols) +
+    scale_shape_manual(values = shps) +
+    guides(color = guide_legend(title = "Individual", nrow = 2, byrow = TRUE), fill = guide_legend(title = "Individual"), shape = guide_legend(title = "Individual")) +
+    xlab("Dimension 1") + ylab("Dimension 2") + 
+    theme_bw() +
+    theme(legend.position = "top") +
+    ggtitle(method[x]) + 
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+      axis.title = element_text(size = 14),
+      axis.text = element_text(size = 12),
+      legend.title = element_text(size = 14),
+      legend.text = element_text(size = 14)
+      )
+  
+  print(gg)
+  
+}))
+
+```
+
+# Prepare random forests predictors
+
+## Extract features by MDS
+
+MDS features were extracted from similarity matrices. We did not find an "optimal" number of dimensions as in previous work. Instead, I used the largest number of MDS dimensions that I could perform on my computer. 
+
+Get calls for both social scales.
+```{r chunk17, eval = FALSE}
+
+indiv_calls <- nat_int_est %>%
+  filter(social_scale == "Individual") %>%
+  mutate(
+    sound.files = as.character(sound.files)
+  ) %>%
+  pull(sound.files)
+
+length(indiv_calls)
+
+site_calls <- nat_int_est %>%
+  filter(social_scale == "Site") %>%
+  mutate(
+    sound.files = as.character(sound.files)
+  ) %>%
+  pull(sound.files)
+
+length(site_calls)
+
+# Checking
+length(indiv_calls) + length(site_calls) == nrow(nat_int_est)
+
+ss <- c("Individual", "Site")
+call_pats <- c(paste(paste("^", indiv_calls, "$", sep = ""), collapse = "|"), paste(paste("^", site_calls, "$", sep = ""), collapse = "|"))
+
+```
+
+I performed MDS with 15 dimensions per social scale and measurement type. I did not optimize the number of MDS dimensions used per similarity method, in which optimization would have consisted of identifying the number of dimensions that yielded stress values close to 5% (Kruskal's rule of thumb for "optimal" solutions with "low" stress). Instead, I performed MDS with the largest number of dimensions I could run on my local computer with the site scale calls, and used the same number of dimensions for the individual scale calls. In previous work, in which I had optimized MDS stress for native range calls, I noticed that MDS stress was lower as the number of dimensions increased.  
+```{r chunk19, eval = FALSE}
+
+mthd <- c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult")
+
+# Convert only the SPCC matrices to distance matrices
+# DTW matrices actually already contain distances
+mat_list <- list(1 - xc_mat_spec, 1- xc_mat_ceps, dtw_domf, dtw_spen, dtw_mult)
+
+# Remove the original matrices from the global environment to free up memory
+rm(list = c('xc_mat_spec', 'xc_mat_ceps', 'dtw_domf', 'dtw_spen', 'dtw_mult'))
+
+# The largest number of dimensions I could use without memory errors
+dims <- 30
+
+invisible(pblapply(1:length(mthd), function(x){
+  
+  iso <- invisible(MASS::isoMDS(mat_list[[x]], k = dims, maxit = 1000, trace = FALSE))
+  
+  saveRDS(iso, file.path(path, paste("MDS_results_", mthd[x], ".RDS", sep = ""))) 
+  
+}))
+
+rm(list = "mat_list")
+
+```
+
+I printed MDS stress values per measurement type and social scales. Stress values are shown as percentages (see `?isoMDS`). Most stress values are close to 5% (Kruskal's rule of thumb for "low" stress), is over 10% for dominant frequency DTW similarity. Although I did not optimize the number of MDS dimensions per measurement type and social scale, I saw similar patterns in acoustic space compared to previous work in the visuals used to validate these measurements for use in random forests.
+```{r chunk20, eval = FALSE}
+
+mthd <- c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult")
+
+stress_df <- rbindlist(lapply(1:length(mthd), function(x){
+  
+  iso <- readRDS(file.path(path, paste("MDS_results_", mthd[x], ".RDS", sep = ""))) 
+  
+  return(data.frame(measurement = mthd[x], mds_stress = iso$stress))
+  
+}))
+
+stress_df %>%
+  dplyr::mutate(
+    mds_stress = round(mds_stress, 2)
+  ) %>% 
+  kable(align = rep("c", nrow(.)))
+
+```
+
+## Extract features by PCA
+
+Get PCA features for acoustic and image parameters. 
+```{r chunk22, eval = FALSE}
+
+mthd <- c("acs_params", "cep_coeff", "img_params")
+
+df_list <- list(acs_params, cep_coeff, img_params)
+
+invisible(pblapply(1:length(mthd), function(x){
+  
+  # Get numeric columns only
+  df_num <- df_list[[x]][, sapply(df_list[[x]], is.numeric)]
+  
+  # Pre-process using the caret package
+  pp_list <- caret::preProcess(df_num, method = c("YeoJohnson", "zv", "nzv", "center", "scale"), thresh = 0.98, freqCut = 98/2, uniqueCut = 2)
+  
+  pp <- predict(pp_list, df_num)
+  
+  # Perform PCA with base package for easier access of summary and loadings
+  pp_pca <- stats::prcomp(pp, center = FALSE)
+  
+  saveRDS(pp_pca, file.path(path, paste("PCA_results_", mthd[x], ".RDS", sep = ""))) 
+  
+}))
+
+```
+
+How many principal components were extracted per measurement type?
+```{r chunk23, eval = FALSE}
+
+mthd <- c("acs_params", "cep_coeff", "img_params")
+
+dims <- invisible(pblapply(1:length(mthd), function(x){
+  
+  pca <- readRDS(file.path(path, paste("PCA_results_", mthd[x], ".RDS", sep = ""))) 
+  
+  dim(pca$x)[2]
+  
+}))
+
+names(dims) <- mthd
+dims
+
+```
+
+## Pre-process random forests predictors
+
+MDS and PCA features were combined into a single data frame. These features were used as random forests predictors. Calls in the image measurements data frame were not in the same order as the other measurement types. Therefore, for each measurement type I made a data frame with a sound.files column, and merged data frames with the full EST afterwards by the sound.files column. 
+```{r chunk25, eval = FALSE}
+
+dim_red <- c("MDS", "PCA")
+
+mthd <- list(c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult"), c("acs_params", "cep_coeff", "img_params"))
+
+mthd_nms <- list(c("SPCC - spectrogram", "SPCC - cepstral coefficients", "DTW - dominant frequency", "DTW - spectral entropy", "DTW - multivariate"), c("Acoustic parameters", "Mel-frequency cepstral coefficients", "Image parameters"))
+
+# Read in the 3 tabular acoustic measurement sets to access sound file order
+acs_params <- read.csv(file.path(path, "acoustic_parameters_1582calls.csv")) %>%
+  mutate(
+    selec = as.character(selec)
+  )
+
+cep_coeff <- read.csv(file.path(path, "Mel_freq_cepstral_coefficients_1582calls.csv")) %>%
+  mutate(
+    selec = as.character(selec)
+  )
+
+img_params <- read.csv(file.path(path, "image_parameters_1582calls.csv"))
+
+df_list <- list(acs_params, cep_coeff, img_params)
+
+# i <- 2
+# x <- 2
+# z <- 3
+feat_df_list <- invisible(pblapply(1:length(dim_red), function(x){
+  
+    df_list <- lapply(1:length(mthd[[x]]), function(z){
+    
+      if(dim_red[x] == "MDS"){
+      
+        iso <- readRDS(file.path(path, paste("MDS_results_", mthd[[x]][z], ".RDS", sep = "")))
+      
+        sound.files <- dimnames(iso$points)[[1]]
+        feats <- data.frame(iso$points)
+        names(feats) <- paste(mthd[[x]][z], "MDS", seq(1, ncol(feats), 1), sep = "_")
+        tmp_df <- data.frame(sound.files = sound.files, feats) %>%
+            mutate(
+              sound.files = as.character(sound.files)
+            )
+        
+        return(tmp_df)
+    
+      } else if(dim_red[x] == "PCA"){
+          
+        pca <- readRDS(file.path(path, paste("PCA_results_", mthd[[x]][z], ".RDS", sep = "")))
+        
+        sound.files <- df_list[[z]]$sound.files
+        feats <- data.frame(pca$x)
+        
+        names(feats) <- paste(mthd[[x]][z], "PCA", seq(1, ncol(feats), 1), sep = "_")
+        tmp_df <- data.frame(sound.files = sound.files, feats) %>%
+          mutate(
+            sound.files = as.character(sound.files)
+          )
+        
+        return(tmp_df)
+    
+      }
+    
+    })
+    
+    names(df_list) <- mthd[[x]]
+    return(df_list)
+  
+}))
+
+# A list of lists
+names(feat_df_list) <- dim_red
+length(feat_df_list[[1]]) # 5 MDS lists
+length(feat_df_list[[2]]) # 3 PCA lists
+
+```
+
+I merged each set of features across measurement types with metadata in the extended selection table. I also added in a column per data frame to indicate whether calls should be used for training, validation, or prediction (used to split the calls into datasets for predictive modelling with random forests).
+```{r chunk26, eval = FALSE}
+
+# Features that will be used for random forests modeling
+names(feat_df_list[["MDS"]])
+names(feat_df_list[["PCA"]])
+
+sup_rf_df <- nat_int_est %>%
+  as_tibble() %>%
+  dplyr::select(
+    c(sound.files, date, range, social_scale, site, Bird_ID, region, country, site_year, year, dept_state, introduced_city)
+  ) %>%
+  # Add a new column to split calls into datasets for predictive modeling
+  # If an individual is not one of those designated for training, then assign to validation
+  dplyr::mutate(
+    rf_set = ifelse(Bird_ID %in% train_indivs & social_scale == "Individual", "training", "validation"),
+    rf_set = ifelse(social_scale == "Site", "prediction", rf_set)
+  ) %>%
+  # Merge the MDS features after merging this list into a single data frame
+  left_join(
+    feat_df_list[["MDS"]] %>%
+      purrr::reduce(
+      left_join, by = "sound.files"
+    ),
+    by = "sound.files"
+  ) %>%
+  # Merge the PCA features after merging this list into a single data frame
+  left_join(
+    feat_df_list[["PCA"]] %>%
+      purrr::reduce(
+      left_join, by = "sound.files"
+    ),
+    by = "sound.files"
+  ) %>%
+  droplevels()  %>%
+  dplyr::mutate(
+    year = as.character(year)
+  )
+
+write.csv(sup_rf_df, file.path(path, "sup_rf_df_noCollfilter.csv"), row.names = FALSE)
+
+```
+
+Numbers of predictors per measurement type before filtering out highly collinear predictors.
+```{r chunk27}
+
+sup_rf_df <- read.csv(file.path(path, "sup_rf_df_noCollfilter.csv")) %>%
+  # Make sure the year column is text and not numeric
+  dplyr::mutate(year = as.character(year))
+dim(sup_rf_df)
+glimpse(sup_rf_df[, 1:25])
+
+# 1847 numeric predictors in the full set
+dim(sup_rf_df[, sapply(sup_rf_df, is.numeric)])
+
+mthd <- list(c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult"), c("acs_params", "cep_coeff", "img_params"))
+type <- unlist(mthd) 
+
+sapply(1:length(type), function(i){
+  paste(type[i], length(grep(type[i], names(sup_rf_df))), sep = ": ")
+})
+
+```
+
+Are any of these MDS or PCA features highly collinear? Using Pearson's correlation statistic of +/- 0.75 as a minimum threshold for "high" correlations.
+```{r chunk29, eval = FALSE}
+
+# The first 10 numeric predictors, looks good
+names(sup_rf_df[, sapply(sup_rf_df, is.numeric)])[1:10]
+
+# Perform Pearson's correlation among all numeric predictors
+cor <- stats::cor(sup_rf_df[, sapply(sup_rf_df, is.numeric)], method = "pearson")
+str(cor)
+range(cor[cor < 1])
+
+# Use the correlation matrix to find names of variables that have > 0.75 or < -0.75 collinearity
+corr_nms <- caret::findCorrelation(cor, cutoff = 0.75, verbose = TRUE, names = TRUE, exact = TRUE)
+
+# Three variables with Pearson's |r| > 0.75
+corr_nms
+
+# [1] "acs_params_PCA_2" "cep_coeff_PCA_1"  "acs_params_PCA_1"
+
+```
+
+Are any of these MDS or PCA features highly correlated with signal-to-noise ratio (SNR, an indicator of call quality)? Using Pearson's correlation statistic as above.
+```{r chunk30, eval = FALSE}
+
+# Add back in the SNR column for this validation analysis
+sup_rf_df_SNR <- sup_rf_df %>%
+  left_join(
+    nat_int_est %>%
+      as_tibble() %>% 
+      dplyr::select(sound.files, SNR),
+    by = "sound.files"
+  )
+dim(sup_rf_df_SNR)
+
+# Remove calls that have NA in SNR column
+sup_rf_df_SNR <- sup_rf_df_SNR %>%
+  filter(!is.na(SNR))
+nrow(sup_rf_df_SNR)
+
+# Check for high correlations among features and SNR
+cor_SNR <- stats::cor(sup_rf_df_SNR[, sapply(sup_rf_df_SNR, is.numeric) & names(sup_rf_df_SNR) != "SNR"], sup_rf_df_SNR$SNR, method = "pearson")
+
+range(cor_SNR[, 1])
+
+# No features are highly correlated with SNR
+which(abs(cor_SNR[, 1]) > 0.75) 
+
+```
+
+I dropped 3 collinear features, leaving 1844 predictors for random forests modeling. 
+```{r chunk31, eval = FALSE}
+
+sup_rf_df2 <- sup_rf_df %>%
+  dplyr::select(-all_of(corr_nms))
+
+dim(sup_rf_df2)
+# [1] 1582 1857
+
+dim(sup_rf_df2[, sapply(sup_rf_df2, is.numeric)])
+# [1] 1582 1844
+
+write.csv(sup_rf_df2, file.path(path, "supervised_RF_dataset_acousticSimilarity.csv"), row.names = FALSE)
+
+```
+
+## Checking datasets for random forests analysis
+
+I reran random forests analysis in R version 3.6.3, as well as all subsequent analysis. All parameters and features were measured using the R version and package versions I used for the last manuscript (had to update R halfway through analyses for this manuscript).
+
+Read back in the random forests training, validation and prediction datasets.
+```{r chunk32}
+
+sup_rf_df <- read.csv(file.path(path, "supervised_RF_dataset_acousticSimilarity.csv")) %>%
+  mutate(
+    year = as.character(year)
+  )
+dim(sup_rf_df)
+
+```
+
+How many predictors will be used?
+```{r chunk33}
+
+ncol(sup_rf_df[, sapply(sup_rf_df, is.numeric)])
+
+```
+
+Numbers of MDS and PCA features, respectively.
+```{r chunk34}
+
+feat_nms <- names(sup_rf_df[, sapply(sup_rf_df, is.numeric)])
+
+length(grep("MDS", feat_nms))
+length(grep("PCA", feat_nms))
+
+```
+
+Number of features by parameter type.
+```{r chunk35}
+
+mthd <- list(c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult"), c("acs_params", "cep_coeff", "img_params"))
+type <- unlist(mthd) 
+
+sapply(1:length(type), function(i){
+  paste(type[i], length(grep(type[i], feat_nms)), sep = ": ")
+})
+
+```
+
+Which individuals will be used for training?
+```{r chunk36}
+
+t_indivs <- sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  mutate(
+    Bird_ID = as.character(Bird_ID)
+  ) %>%
+  pull(Bird_ID) %>%
+  unique()
+
+t_indivs
+
+# Looks good
+all(t_indivs %in% train_indivs)
+all(train_indivs %in% t_indivs)
+
+```
+
+Calls per training individual, including average and range. Since each training individual represents a class on which random forests will be trained, the number of calls per individual represents the depth of sampling for each class.
+```{r chunk37}
+
+# Number of calls per training individual
+sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  group_by(Bird_ID) %>%
+  summarise(n_calls = length(sound.files)) 
+
+# Mean calls across training individuals
+sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  group_by(Bird_ID) %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls) %>%
+  mean()
+
+# Range of calls across training individuals
+sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  group_by(Bird_ID) %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls) %>%
+  range()
+
+```
+
+How many training calls? Percentage of the individual scale dataset? Percentage of the whole dataset across social scales?
+```{r chunk38}
+
+sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls)
+
+# Percentage of the individual dataset
+(sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls) / nrow(sup_rf_df %>%
+  filter(social_scale == "Individual"))) * 100
+
+# Percentage of the whole dataset across social scales
+(sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls) / nrow(sup_rf_df)) * 100
+
+```
+
+Which individuals will be used for validation?
+```{r chunk39}
+
+v_indivs <- sup_rf_df %>%
+  filter(rf_set == "validation") %>%
+  mutate(
+    Bird_ID = as.character(Bird_ID)
+  ) %>%
+  pull(Bird_ID) %>%
+  unique()
+
+v_indivs
+
+# Looks good
+all(v_indivs %in% train_indivs)
+all(train_indivs %in% v_indivs)
+
+```
+
+How many validation calls? Percentage of the individual scale dataset? Percentage of the whole dataset?
+```{r chunk40}
+
+sup_rf_df %>%
+  filter(rf_set == "validation") %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls)
+
+# Percentage of the individual dataset
+(sup_rf_df %>%
+  filter(rf_set == "validation") %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls) / nrow(sup_rf_df %>%
+  filter(social_scale == "Individual"))) * 100
+
+# Percentage of the whole dataset across social scales
+(sup_rf_df %>%
+  filter(rf_set == "validation") %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls) / nrow(sup_rf_df)) * 100
+
+```
+
+How many calls will be used for prediction? All site scale calls will be used. Percentage of the whole dataset across social scales?
+```{r chunk41}
+
+sup_rf_df %>%
+  filter(rf_set == "prediction") %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls)
+
+# Percentage of the whole dataset across social scales
+(sup_rf_df %>%
+  filter(rf_set == "prediction") %>%
+  summarise(n_calls = length(sound.files)) %>%
+  pull(n_calls) / nrow(sup_rf_df)) * 100
+
+```
+
+# Random Forests Model 1
+
+A random forests model was trained using native and introduced individuals and all predictors. Model training and tuning were performed with 5 iterations of repeated 10-fold cross-validation. This was a multiclass model (e.g. 8 individuals = 8 class labels). I used the `ranger` package random forests implementation.
+```{r chunk42, eval = FALSE}
+
+# Initialize training data
+train_df <- sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  # Remove categorical variables that will not be used for classification
+  dplyr::select(-c(sound.files, date, range, social_scale, site, region, country, site_year, year, dept_state, introduced_city, rf_set)) %>%
+  # Change the symbol inside bird IDs, otherwise caret throws an error
+  mutate(
+    Bird_ID = gsub("-", "_", Bird_ID)
+  ) %>%
+  droplevels()
+
+dim(train_df)
+names(train_df[, 1:25])
+
+# Number of trees
+trees <- 2000
+trees
+
+# mtry values for tuning
+mtry <- round(seq(2, ncol(train_df[, sapply(train_df, is.numeric)]), ncol(train_df[, sapply(train_df, is.numeric)])/10))
+mtry
+
+# Other parameters for ranger random forests
+splitrule <- "gini"
+min.node.size <- 1
+
+# Perform model training and tuning with caret package
+
+# Make a data frame of all combinations of the parameters initialized for  ranger random forests that can be placed into a tuning grid
+# Note that the number of trees cannot be placed in a tuning grid for caret, therefore looping over numbers of trees below
+tunegrid <- expand.grid(.mtry = mtry, .splitrule = splitrule, .min.node.size = min.node.size)
+    
+# Control how training will be performed
+fitControl <- caret::trainControl(method = "repeatedcv", number = 5, repeats = 5, search = "grid", returnData = TRUE, returnResamp = "final", savePredictions = "final", classProbs = TRUE, summaryFunction = multiClassSummary, verboseIter = TRUE)
+    
+# Used a large number of trees for the forest (2000), instead of iterating over trees as in previous analyses
+rf_model1 <- caret::train(x = train_df[, sapply(train_df, is.numeric)], y = train_df$Bird_ID, num.trees = trees, method = "ranger", trControl = fitControl, tuneGrid = tunegrid, importance = "permutation", replace = TRUE, scale.permutation.importance = TRUE, num.threads = cores, metric = c("Kappa"), maximize = TRUE, seed = seed)
+
+saveRDS(rf_model1, file.path(path, "rf_model1.RDS"))
+
+```
+
+```{r chunk43}
+
+rf_model1 <- readRDS(file.path(path, "rf_model1.RDS"))
+
+```
+
+## Model 1 Performance
+
+Check out model performance. mtry was 186 for the final model, with 156 calls and 1844 predictors.
+```{r chunk44}
+
+rf_model1
+
+```
+
+Checking out the cross-validated confusion matrix. Some calls were misclassified but the model performed really well overall. Accuracy was 91.67% with a 95% CI of (86.17, 95.49). I made the confusion matrix by obtaining the predicted classes. Making the confusion matrix in this way yields useful summary statistics (like a 95% CI) that otherwise wouldn't show up for a multiclass model.
+```{r chunk45}
+
+# Make a new confusion matrix from the predictions to get sensitivity and specificity per class
+training_res <- rf_model1$finalModel$predictions %>%
+  as_tibble() %>%
+  dplyr::mutate(
+    predicted_class = sapply(1:nrow(.), function(i){
+      names(.)[which(.[i, ] == max(.[i, ]))]
+    }),
+    predicted_class = factor(predicted_class, levels = gsub("-", "_", t_indivs))
+  )
+glimpse(training_res)
+
+confusionMatrix(factor(train_df$Bird_ID, levels = gsub("-", "_", t_indivs)), training_res$predicted_class)
+
+```
+
+Save the final model and the training object as well.
+```{r chunk46}
+
+model1 <- rf_model1$finalModel
+
+saveRDS(model1, file.path(path, "ranger_model1.RDS"))
+saveRDS(rf_model1, file.path(path, "ranger_train_model1.RDS"))
+
+```
+
+## Model 1 variable importance
+
+Check out variable importance.
+```{r chunk47}
+
+model1 <- readRDS(file.path(path, "ranger_model1.RDS"))
+
+```
+
+Visualize variable importance for the first model.
+
+SPCC spectrogram and cepstral coefficient features were ranked among the top important variables. As these features also showed decent separation of individuals in acoustic space, the fact that this model relied most on these features to classify back to individuals indicated that the model identified biologically relevant patterns. Note that SPCC on cepstral coefficients, which showed poorer separation of individuals in acoustic space than SPCC on spectrograms (see above), yielded only a single feature in the top 20 variables shown below.
+```{r chunk48}
+
+n <- 12
+
+# Feature types
+# "SPCC_spec"  "SPCC_ceps"  "DTW_domf"   "DTW_spen"   "DTW_mult"   "acs_params"
+# "cep_coeff"  "img_params"
+cols <- c(
+  alpha("purple", 0.6), 
+  topo.colors(n)[2], 
+  terrain.colors(n)[1], 
+  heat.colors(n)[1], 
+  heat.colors(n, alpha = 0.7)[5], 
+  heat.colors(n)[8], 
+  gray.colors(n)[5], 
+  "black"
+  )
+
+# Make a data frame of variable importance with feature type
+var_imp_df <- data.frame(
+  var_nms = names(model1$variable.importance), 
+  imp = model1$variable.importance
+  )
+
+var_imp_df <- var_imp_df %>%
+  # Add in a feature type column
+  mutate(
+    var_type = sapply(1:nrow(var_imp_df), function(y){
+      paste(
+        strsplit(as.character(var_imp_df$var_nms[y]), split = "_")[[1]][1],
+        strsplit(as.character(var_imp_df$var_nms[y]), split = "_")[[1]][2],
+        sep = "_"
+      )
+    })
+  ) %>%
+  mutate(
+    var_type = factor(var_type, levels = c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult", "acs_params", "cep_coeff", "img_params")),
+    var_nms = as.character(var_nms)
+  ) %>%
+  arrange(desc(imp)) %>%
+  slice(1:20) %>%
+  # Uncomment to see features organized by importance on the y-axis too, and use forcats::fct_rev(var_nms) instead of var_nms in aes() calls below
+  # I think ordered by feature type is more interpretable after all
+  # mutate(
+    # var_nms = factor(var_nms, levels = var_nms)
+  # ) %>%
+  droplevels()
+
+# x11()
+ggplot(data = var_imp_df) + 
+  geom_segment(aes(x = 0, xend = imp, y = var_nms, yend = var_nms, color = var_type), size = 2) +
+  geom_point(aes(y = var_nms, x = imp), pch = 21, fill = gray.colors(n)[2], color = "black", size = 3.5) +
+  scale_color_manual(values = cols) +
+  xlab("Variable Importance") + 
+  ylab("Top 20 Most Important Features") +
+  guides(color = guide_legend(title = "Feature Type", nrow = 2)) +
+  theme_bw() + 
+  theme(
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major.y = element_line(size = 0.15),
+    panel.grid.major.x = element_line(color = "black", size = 0.25, linetype = "dotted"),
+    panel.grid.minor = element_line(size = 0.15),
+    axis.ticks = element_line(size = 0.15),
+    legend.position = "top",
+    legend.direction = "horizontal",
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10),
+    legend.key.width = unit(1, "lines")
+  ) 
+
+# ggsave(file.path(gpath, "SupplementaryFigure11_RFModel1_VarImp.tiff"), units = "in", width = 8, height = 6, dpi = 300)
+  
+```
+
+# Random Forests Model 2
+
+Could classification performance be improved by dropping less important features? I proceeded with automatic feature selection to drop less important variables in order to build a second random forests model. I did not pursue manual feature selection as performed in previous work, in which we manually identified and dropped features that were less important than randomly generated variables<a href='#References'><sup>[1]</sup></a>. 
+
+Automatic feature selection was performed using `Boruta`, which also uses a random forests classifier.
+```{r chunk49, eval = FALSE}
+
+# Initialize training data
+train_df <- sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  # Remove categorical variables that will not be used for classification
+  dplyr::select(-c(sound.files, date, range, social_scale, site, region, country, site_year, year, dept_state, introduced_city, rf_set)) %>%
+  # Change the symbol inside bird IDs, otherwise caret throws an error
+  mutate(
+    Bird_ID = gsub("-", "_", Bird_ID)
+  ) %>%
+  droplevels()
+
+dim(train_df)
+names(train_df[, 1:25])
+
+auto_feats <- Boruta(factor(train_df$Bird_ID) ~ ., train_df[, sapply(train_df, is.numeric)], maxRuns = 100, pValue = 0.01)
+# str(auto_feats)
+
+saveRDS(auto_feats, file.path(path, "Boruta_auto_sel_results.RDS"))
+
+```
+
+## Boruta feature selection
+
+```{r chunk50}
+
+auto_feats <- readRDS(file.path(path, "Boruta_auto_sel_results.RDS"))
+
+auto_df <- auto_feats$ImpHistory %>%
+  as.data.frame() %>%
+  dplyr::select(-c("shadowMax", "shadowMin", "shadowMean")) %>%
+  # rownames_to_column() %>% 
+  pivot_longer(cols = names(.), names_to = "features") %>%
+  rename(
+    importance = value
+  ) %>%
+  left_join(
+    data.frame(
+      features = names(auto_feats$finalDecision),
+      type = as.character(auto_feats$finalDecision)
+      ),
+    by = "features"
+  )
+glimpse(auto_df[1:10, ])
+
+# x11()
+ggplot(auto_df %>%
+         filter(type == "Confirmed" | type == "Tentative"), aes(y = features, x = importance, fill = type)) +
+  geom_boxplot() + 
+  scale_fill_manual(values = c("firebrick", "dodgerblue")) +
+  xlab("Variable Importance by Automatic Selection") + 
+  ylab("Features") +
+  theme_bw() + 
+  theme(panel.grid.major.x = element_line(color = "black", size = 0.25, linetype = "dashed")) 
+
+# 41 variables were "tentatively" important, 73 were "confirmed" important, and 1730 were rejected
+# Build a second model with the tentative and confirmed features
+table(auto_feats$finalDecision)
+
+```
+
+```{r chunk51, eval = FALSE}
+
+# Which features are these? 114 total
+imp_feats <- names(auto_feats$finalDecision)[which(auto_feats$finalDecision %in% c("Tentative", "Confirmed"))]
+
+saveRDS(imp_feats, file.path(path, "auto_sel_imp_feats.RDS"))
+
+```
+
+```{r chunk52}
+
+imp_feats <- readRDS(file.path(path, "auto_sel_imp_feats.RDS"))
+head(imp_feats)
+length(imp_feats)
+
+```
+
+The second random forests model was trained with the same training dataset, but with only the 114 most important predictors as determined by automatic feature selection.
+```{r chunk53, eval = FALSE}
+
+# Initialize training data
+train_df <- sup_rf_df %>%
+  filter(rf_set == "training") %>%
+  # Remove categorical variables that will not be used for classification
+  dplyr::select(-c(sound.files, date, range, social_scale, site, region, country, site_year, year, dept_state, introduced_city, rf_set)) %>%
+  # Change the symbol inside bird IDs, otherwise caret throws an error
+  mutate(
+    Bird_ID = gsub("-", "_", Bird_ID)
+  ) %>%
+  droplevels() %>%
+  # Retain only automatically selected features
+  dplyr::select(Bird_ID, all_of(imp_feats))
+
+dim(train_df)
+names(train_df[, 1:25])
+
+# Looks good
+all(imp_feats %in% names(train_df))
+
+# Number of trees for tuning
+trees <- 2000
+trees
+
+# mtry values for tuning
+mtry <- round(seq(2, ncol(train_df[, sapply(train_df, is.numeric)]), ncol(train_df[, sapply(train_df, is.numeric)])/10))
+mtry
+
+# Other parameters for ranger random forests
+splitrule <- "gini"
+min.node.size <- 1
+
+# Perform model training and tuning with caret package
+
+# Make a data frame of all combinations of the parameters initialized for  ranger random forests that can be placed into a tuning grid
+# Note that the number of trees cannot be placed in a tuning grid for caret, therefore looping over numbers of trees below
+tunegrid <- expand.grid(.mtry = mtry, .splitrule = splitrule, .min.node.size = min.node.size)
+    
+# Control how training will be performed
+fitControl <- caret::trainControl(method = "repeatedcv", number = 5, repeats = 5, search = "grid", returnData = TRUE, returnResamp = "final", savePredictions = "final", classProbs = TRUE, summaryFunction = multiClassSummary, verboseIter = TRUE)
+
+rf_model2 <- caret::train(x = train_df[, sapply(train_df, is.numeric)], y = factor(train_df$Bird_ID), num.trees = trees, method = "ranger", trControl = fitControl, tuneGrid = tunegrid, importance = "permutation", replace = TRUE, scale.permutation.importance = TRUE, num.threads = cores, metric = c("Kappa"), maximize = TRUE, seed = seed)
+
+saveRDS(rf_model2, file.path(path, "rf_model2.RDS"))
+
+```
+
+```{r chunk54}
+
+rf_model2 <- readRDS(file.path(path, "rf_model2.RDS"))
+
+```
+
+## Model 2 performance
+
+The final model used mtry of 2 with 156 calls and 114 predictors.
+```{r chunk55}
+
+rf_model2
+
+```
+
+Cross-validated confusion matrix. This model performed really well overall. The final classification accuracy was 97.44% with 95% CI (93.57, 99.30).
+```{r chunk56}
+
+# Make a new confusion matrix from the predictions to get sensitivity and specificity per class
+training_res <- rf_model2$finalModel$predictions %>%
+  as_tibble() %>%
+  dplyr::mutate(
+    predicted_class = sapply(1:nrow(.), function(i){
+      names(.)[which(.[i, ] == max(.[i, ]))]
+    }),
+    predicted_class = factor(predicted_class, levels = gsub("-", "_", t_indivs))
+  )
+glimpse(training_res)
+
+confusionMatrix(factor(train_df$Bird_ID, levels = gsub("-", "_", t_indivs)), training_res$predicted_class)
+
+```
+
+I obtained classification accuracy metrics by class, which provided further evidence for strong individual signatures in parakeet contact calls. These statistics show the balanced accuracy = (sensitivity + specificity)/2, or the averaged true positive and true negative rates. What was the balanced accuracy per individual used in model training? Mean and standard error of balanced accuracy of individuals per range?
+```{r chunk57}
+
+cM <- confusionMatrix(factor(train_df$Bird_ID, levels = gsub("-", "_", t_indivs)), training_res$predicted_class)
+
+ba <- round(cM$byClass[, grep("Balanced Accuracy", dimnames(cM$byClass)[[2]])], 2)
+
+# Mean and standard error for native range birds
+mean(ba[grep("NAT", names(ba))]) # 99.00
+pracma::std_err(ba[grep("NAT", names(ba))]) # 0.01
+
+# Mean and standard error for introduced range birds
+mean(ba[grep("INV", names(ba))]) # 98.75
+std_err(ba[grep("INV", names(ba))]) # 0.0075
+
+```
+
+Saved this model.
+```{r chunk58}
+
+model2 <- rf_model2$finalModel
+# print(model2)
+
+# Save the final model and the training object as well
+saveRDS(model2, file.path(path, "ranger_model2.RDS"))
+saveRDS(rf_model2, file.path(path, "ranger_train_model2.RDS"))
+
+```
+
+## Model 2 variable importance
+
+Checked out variable importance.
+```{r chunk59}
+
+model2 <- readRDS(file.path(path, "ranger_model2.RDS"))
+
+```
+
+SPCC and cepstral coefficients were also among the top features here.
+```{r chunk60}
+
+n <- 12
+
+# Feature types
+# "SPCC_spec"  "SPCC_ceps"  "DTW_domf"   "DTW_spen"   "DTW_mult"   "acs_params"
+# "cep_coeff"  "img_params"
+cols <- c(
+  alpha("purple", 0.6), 
+  topo.colors(n)[2], 
+  terrain.colors(n)[1], 
+  heat.colors(n)[1], 
+  heat.colors(n, alpha = 0.7)[5], 
+  heat.colors(n)[8], 
+  gray.colors(n)[5], 
+  "black"
+  )
+
+# Make a data frame of variable importance with feature type
+var_imp_df <- data.frame(
+  var_nms = names(model2$variable.importance), 
+  imp = model2$variable.importance
+  )
+
+var_imp_df <- var_imp_df %>%
+  # Add in a feature type column
+  mutate(
+    var_type = sapply(1:nrow(var_imp_df), function(y){
+      paste(
+        strsplit(as.character(var_imp_df$var_nms[y]), split = "_")[[1]][1],
+        strsplit(as.character(var_imp_df$var_nms[y]), split = "_")[[1]][2],
+        sep = "_"
+      )
+    })
+  ) %>%
+  mutate(
+    var_type = factor(var_type, levels = c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult", "acs_params", "cep_coeff", "img_params")),
+    var_nms = as.character(var_nms)
+  ) %>%
+  arrange(desc(imp)) %>%
+  slice(1:20) %>%
+  droplevels()
+
+glimpse(var_imp_df)
+
+x11()
+ggplot(data = var_imp_df) + 
+  geom_segment(aes(x = 0, xend = imp, y = var_nms, yend = var_nms, color = var_type), size = 2) +
+  geom_point(aes(y = var_nms, x = imp), pch = 21, fill = gray.colors(n)[2], color = "black", size = 3.5) +
+  scale_color_manual(values = cols) +
+  xlab("Variable Importance") + 
+  ylab("Top 20 Most Important Features") +
+  guides(color = guide_legend(title = "Feature Type", nrow = 2)) +
+  theme_bw() + 
+  theme(
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    panel.grid.major.y = element_line(size = 0.15),
+    panel.grid.major.x = element_line(color = "black", size = 0.25, linetype = "dotted"),
+    panel.grid.minor = element_line(size = 0.15),
+    axis.ticks = element_line(size = 0.15),
+    legend.position = "top",
+    legend.direction = "horizontal",
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10),
+    legend.key.width = unit(1, "lines")
+  ) 
+
+```
+
+## Model validation and prediction
+
+I chose Model 2, the automated feature selection model, as the "best" model. I ran the validation and prediction calls down this model, such that I could place visuals made later in the same overall acoustic space. I extracted the similarity values for the validation calls and performed a validation analysis prior to proceeding with Mantel tests. 
+```{r chunk61}
+
+# Final model 2 (automatic feature selection)
+model2 <- readRDS(file.path(path, "ranger_model2.RDS"))
+
+# Random forests datasets (training, validation, prediction)
+sup_rf_df <- read.csv(file.path(path, "supervised_RF_dataset_acousticSimilarity.csv")) %>%
+  mutate(
+    year = as.character(year)
+  )
+glimpse(sup_rf_df[, 1:20])
+
+```
+
+Get the validation and prediction datasets.
+```{r chunk62, eval = FALSE}
+
+# Get validation calls
+vp_df <- sup_rf_df %>%
+  dplyr::filter(rf_set %in% c("validation", "prediction")) %>% 
+  droplevels()
+
+dim(vp_df)
+
+# Looks good
+vp_df %>%
+  pull(rf_set) %>%
+  unique()
+
+# Subset by the features retained in Model 2 after automatic feature selection
+vp_df_afs <- vp_df[, grep(paste(paste("^", model2$xNames, "$", sep = ""), collapse = "|"), names(vp_df))]
+dim(vp_df_afs)
+
+# Checking
+all(model2$xNames == names(vp_df_afs))
+
+```
+
+Run the validation and prediction dataset down the trained and tuned Model2, then extract the proximity matrix.
+```{r chunk63, eval = FALSE}
+
+set.seed(seed)
+
+vp_prox_mat <- edarf::extract_proximity(fit = model2, newdata = vp_df_afs)
+str(vp_prox_mat)
+
+dimnames(vp_prox_mat) <- list(vp_df$sound.files, vp_df$sound.files)
+
+saveRDS(vp_prox_mat, file.path(path, "rf_validatn_predictn_prox_mat.RDS"))
+
+```
+
+### Validation analysis
+
+Read back in the proximity matrix for validation.
+```{r chunk64}
+
+vp_prox_mat <- readRDS(file.path(path, "rf_validatn_predictn_prox_mat.RDS"))
+str(vp_prox_mat)
+
+```
+
+Model validation was performed by running Gaussian mixture modelling (or model-based clustering) on the random forests proximity matrix to assess how well random forests similarity represented patterns of individual consistency and distinctiveness. Here, the Gaussian mixture models were not given a number of mixture components (e.g. a number of optimal clusters), so these models yielded the "optimal"" number of clusters found.
+```{r chunk65}
+
+v_calls <- sup_rf_df %>%
+  filter(rf_set == "validation") %>%
+  pull(sound.files)
+  
+length(v_calls) # 73
+
+# Subset the proximity matrix to yield validation calls only
+inds <- grep(paste(paste("^", v_calls, "$", sep = ""), collapse = "|"), dimnames(vp_prox_mat)[[1]])
+head(inds)
+
+v_prox_mat <- vp_prox_mat[inds, inds]
+str(v_prox_mat)
+
+```
+
+```{r chunk65, eval = FALSE}
+
+set.seed(seed)
+mclust_res <- mclust::Mclust(data = stats::as.dist(1 - v_prox_mat, upper = TRUE, diag = TRUE))
+
+# The optimal found 9 classes in the data, which matches the number of individuals used for validation 
+summary(mclust_res)
+
+saveRDS(mclust_res, file.path(path, "mclust_res_validatn_free.RDS"))
+
+```
+
+Aesthetics for ggplot. Using blue/gold color scheme for native versus introduced, shapes are individuals.
+```{r chunk66}
+
+# Fill colors and shapes by individual, ordered by 4 native and then 5 introduced
+fills <- c("navy", "royalblue2", "turquoise", "dodgerblue", "gold4", "darkorange3", "orange", "goldenrod2", "gold2")
+
+cols <- fills
+
+shps <- c(21, 22, 24, 23, 21, 23, 24, 22, 25) 
+
+```
+
+### Validation results
+
+Perform MDS on the random forests proximity matrix to visualize calls in 2D random forests space.
+```{r chunk67}
+
+# Read in clustering results
+mclust_res <- readRDS(file.path(path, "mclust_res_validatn_free.RDS"))
+names(mclust_res)
+
+# Convert to a distance matrix and object 
+dist_mat <- stats::as.dist(1 - v_prox_mat, diag = TRUE, upper = TRUE)
+# str(dist_mat)
+
+iso <- invisible(MASS::isoMDS(dist_mat, k = 2, maxit = 1000, trace = FALSE))
+# str(iso)
+  
+bird_ids <- vp_df %>%
+  filter(rf_set == "validation") %>% 
+  mutate(
+    Bird_ID = as.character(Bird_ID),
+    sy_Bird_ID = paste(site_year, Bird_ID, sep = " - ")
+  ) %>%
+  pull(sy_Bird_ID)
+
+unique(bird_ids)
+  
+rf_mds_df <- data.frame(X = iso$points[, 1], Y = iso$points[, 2]) %>%
+  mutate(
+    indiv = bird_ids, 
+    cluster = factor(as.character(mclust_res$classification))
+    )
+  
+# Order individuals by native and then introduced range
+rf_mds_df$indiv <- factor(rf_mds_df$indiv, levels = unique(bird_ids))
+
+# Convex hull polygons per indiviual
+hulls <- plyr::ddply(rf_mds_df, "indiv", function(x){
+  x[chull(x$X, x$Y), ]
+})
+
+x11()
+
+ggplot(rf_mds_df, aes(x = X, y = Y)) + 
+  
+  # One point per call, with fill colors and shapes by individual
+  geom_point(aes(fill = indiv, shape = indiv), color = "black", size = 5) +
+  
+  # Also one point per call, but color reflects cluster assignment
+  # geom_point(aes(color = cluster), shape = 19, size = 2) +
+  geom_point(color = "white", shape = 19, size = 3) +
+  
+  geom_text(aes(label = cluster), size = 2, fontface = "bold") +
+  
+  geom_polygon(data = hulls, aes(x = X, y = Y, fill = indiv), alpha = 0.2, size = 0.2) +
+  
+  scale_colour_manual(values = cols) + 
+  scale_fill_manual(values = fills) +
+  scale_shape_manual(values = shps) +
+  guides(color = "none", fill = guide_legend(title = "Individual", nrow = 3, byrow = FALSE), shape = guide_legend(title = "Individual", override.aes = list(size = 3))) +
+  xlab("Dimension 1") + ylab("Dimension 2") + 
+  theme_bw() +
+  theme(legend.position = "top") +
+  theme(
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    panel.grid.major.y = element_line(size = 0.15),
+    panel.grid.major.x = element_line(color = "black", size = 0.25, linetype = "dotted"),
+    panel.grid.minor = element_line(size = 0.15),
+    axis.ticks = element_line(size = 0.15),
+    legend.position = "top",
+    legend.direction = "horizontal",
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 10),
+    legend.margin = margin(2, 2, 2, 2),
+    legend.box.margin = margin(-5, -5, -5, -5)
+  )
+  
+```
+
+Only a single call was misclassified for the native range. Clustering with random forests similarity yielded lower classification accuracy for the introduced range. As in the native range, birds from different sites overlapped in acoustic space, but some of these calls from individuals recorded at different sites were clustered together. Notably, ELEM_2019 INT-UM9 and SOCC_2019 INT-UM16 were close in acoustic space and had calls assigned to the same cluster. Also, while SOCC_2019 INT-UM16 and the other individual recorded at that site, SOCC_2019 INT-UM17, did not overlap visibly in acoustic space, one call for UM16 was assigned to the same cluster as most of the calls for UM17. Calls for these two individuals were certainly visibly similar. Finally, the clear separation of calls from the two ranges reflected our findings of simplified frequency modulation patterns in introduced range calls<a href='#References'><sup>[3]</sup></a>. 
+
+Overall, our native range validation results from our previous work were replicated here<a href='#References'><sup>[1]</sup></a>, and the patterns of overlap among introduced range individuals in acoustic space were similar to native range individuals.
+
+Model validation yielded biologically relevant patterns, so I proceeded by using the SPCC and random forests similarity matrices for visualizations and Mantel tests. Since I extracted a proximity matrix for the individual scale validation calls and site scale calls together, all subsequent acoustic space visualizations made with the random forests proximity matrix can be interpreted along the same axes.
+
+# References
+
+    1. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
+    
+    2. Keen, S., Ross, J. C., Griffiths, E. T., Lanzone, M., & Farnsworth, A. (2014). A comparison of similarity-based approaches in the classification of flight calls of four species of North American wood-warblers (Parulidae). Ecological Informatics, 21, 25–33. https://doi.org/10.1016/j.ecoinf.2014.01.001
+    
+    3. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
+    
+```{r chunk67}
+
+sessionInfo()
+
+```

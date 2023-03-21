@@ -1,0 +1,598 @@
+---
+title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 09:</center>
+subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Introduced Range eBird Population Trends Over Time</center>
+ &nbsp;
+author: |
+  <center style="font-style:normal;">
+  <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
+  &nbsp;
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
+  <br />
+  <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
+  &nbsp;
+date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
+  <br />
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+---
+
+<style type="text/css">
+
+a:hover {
+  color: #23527c !important;
+}
+
+h1.title {
+  font-size: 32px;
+  color: black;
+  font-weight: normal;
+}
+
+h1 {
+   color: black;
+   font-size: 26px;
+   font-weight: normal;
+}
+
+h2 {
+   color: black;
+   font-size: 24px;
+   font-weight: bold;
+}
+
+h3 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+h4 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+body{ /* Normal */
+      font-size: 18px;
+  }
+  
+code.r{ /* Code block */
+    font-size: 18px;
+}
+</style>
+
+```{r global options, include = FALSE}
+
+knitr::opts_knit$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+```
+
+See the methods and appendix of the associated publication for more information about these analyses, and tips for [eBird best practices](https://cornelllabofornithology.github.io/ebird-best-practices/ebird.html). 
+
+Check out Github repositories from previous work for related analyses and code:
+
+- [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
+
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[3]</sup></a>
+
+Please cite the associated papers and code (see DOIs on GitHub) if the code or analyses across these repositories are useful for your own research.
+```{r chunk1, warning = FALSE, message = FALSE}
+
+rm(list = ls())
+
+X <- c("tidyverse", "pbapply", "dplyr", "data.table", "parallel", "scales", "ggplot2", "auk", "pracma", "rgdal", "rgeos", "knitr")
+
+invisible(lapply(X, library, character.only = TRUE))
+
+# Suppress summarise warnings from dplyr
+options(dplyr.summarise.inform = FALSE)
+
+path <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Data"
+tx_path <- file.path(path, "ebd_US-TX-453_200401_201912_relJul-2020") # path to Travis, TX eBird data
+la_path <- file.path(path, "ebd_US-LA-071_200401_201912_relJul-2020") # path to New Orleans, LA eBird data
+
+gpath <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Graphics"
+seed <- 401
+cores <- parallel::detectCores() - 2
+
+```
+
+Read in extended selection table (EST). This contains metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales.
+```{r chunk2}
+
+nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
+# glimpse(nat_int_est)
+
+# For which introduced range cities should we get eBird data?
+nat_int_est %>%
+  filter(!is.na(introduced_city)) %>%
+  pull(introduced_city) %>%
+  unique() %>%
+  as.character()
+
+```
+
+# eBird downloads
+
+After getting eBird access, I downloaded data on 16 September 2020 for the following counties in the USA:
+
+  - Travis, TX (for Austin, all species)
+  - Dallas, TX
+  - Orleans, LA (for New Orleans, all species)
+  - Miami-Dade, FL (for Miami)
+  - Fairfield, CT (for Stratford)
+  - New Haven, CT (for Milford)
+
+Unless otherwise noted, the search was limited to <i>Myiopsitta monachus</i>. For Austin and New Orleans, all species were requested so as to evaluate monk parakeet frequency in checklists relative to other species over time. The date range for all requests was January 2004 - January 2020. No unvetted data was included. I did not download data for El Paso, TX (only a single bird and nest), and Gilbert, AZ (3 birds, 2 nests). For the purposes of this manuscript, analyses below were limited to Austin, TX and New Orleans, LA to assess population trends over time.
+
+```{r chunk3, eval = FALSE}
+
+# Austin, from Travis county
+ebd_aust_mnk <- read_ebd(file.path(file.path(path, "ebd_US-TX-453_200401_202001_relAug-2020"), "ebd_US-TX-453_200401_202001_relAug-2020.txt")) %>%
+  filter(grepl("Austin", locality, ignore.case = TRUE)) %>%
+  # Get just monk parakeets
+  filter(grepl("Myiopsitta", scientific_name, ignore.case = TRUE)) %>%
+  droplevels()
+
+saveRDS(ebd_aust_mnk, file.path(path, "ebd_aust_mnk.RDS"))
+
+# New Orleans, from Orleans county
+ebd_norl_mnk <- read_ebd(file.path(file.path(path, "ebd_US-LA-071_200401_202001_relAug-2020"), "ebd_US-LA-071_200401_202001_relAug-2020.txt")) %>%
+  filter(grepl("New Orleans", locality, ignore.case = TRUE)) %>%
+  # Get just monk parakeets
+  filter(grepl("Myiopsitta", scientific_name, ignore.case = TRUE)) %>%
+  droplevels()
+
+saveRDS(ebd_norl_mnk, file.path(path, "ebd_norl_mnk.RDS"))
+
+```
+
+Checking that the monk parakeet observations looked ok for assessing population trends.
+```{r chunk4}
+
+ebd_aust_mnk <- readRDS(file.path(path, "ebd_aust_mnk.RDS"))
+dim(ebd_aust_mnk) # 3521 monk parakeet observations
+names(ebd_aust_mnk)
+
+ebd_norl_mnk <- readRDS(file.path(path, "ebd_norl_mnk.RDS"))
+dim(ebd_norl_mnk) # 500 monk parakeet observations
+
+# Are all scientific names ok? Looks good
+ebd_aust_mnk %>%
+  pull(scientific_name) %>%
+  unique()
+
+ebd_norl_mnk %>%
+  pull(scientific_name) %>%
+  unique()
+
+# Does each row represent a unique checklist? Yes, looks good
+ebd_aust_mnk %>%
+  pull(checklist_id) %>%
+  duplicated() %>%
+  any()
+
+ebd_norl_mnk %>%
+  pull(checklist_id) %>% 
+  duplicated() %>%
+  any()
+
+# Is the year range correct? Also looks good
+ebd_aust_mnk %>%
+  dplyr::mutate(
+    observation_date = as.character(observation_date) 
+  ) %>% 
+  dplyr::select(observation_date) %>% 
+  tidyr::separate(observation_date, into = c("year", "month", "day"), sep = "-") %>%
+  pull(year) %>%
+  unique()
+
+ebd_norl_mnk %>%
+  dplyr::mutate(
+    observation_date = as.character(observation_date) 
+  ) %>% 
+  dplyr::select(observation_date) %>% 
+  tidyr::separate(observation_date, into = c("year", "month", "day"), sep = "-") %>%
+  pull(year) %>%
+  unique()
+
+# For the analyses below we did not take observation counts or the numbers of parakeets reported per checklist
+# Checked out observations with the highest counts recorded, along with species comments
+# ebd_aust_mnk %>%
+#   dplyr::filter(observation_count > 10) %>%
+#   dplyr::mutate(observation_count = as.numeric(observation_count)) %>% 
+#   dplyr::filter(observation_count > 10) %>% 
+#   dplyr::select(observation_count, species_comments) %>%
+#   dplyr::filter(complete.cases(species_comments)) %>%
+#   View()
+
+# ebd_norl_mnk %>%
+#   dplyr::filter(observation_count != "X") %>%
+#   dplyr::mutate(observation_count = as.numeric(observation_count)) %>% 
+#   dplyr::filter(observation_count > 10) %>% 
+#   dplyr::select(observation_count, species_comments) %>%
+#   dplyr::filter(complete.cases(species_comments)) %>%
+#   View()
+
+```
+
+# Averaging checklists by sampling year
+
+## Austin
+
+I binned checklists by weeks per year then calculated the percentage of parakeet sightings relative to other species across these bins, following an approach used by Clark (2017)<a href='#References'><sup>[2]</sup></a>. Here I used the eBird checklists with all species to calculate the frequency of monk parakeet observations relative to other species.
+```{r chunk5, eval = FALSE}
+
+ebd_aust <- read_ebd(file.path(file.path(path, "ebd_US-TX-453_200401_202001_relAug-2020"), "ebd_US-TX-453_200401_202001_relAug-2020.txt")) %>%
+  filter(grepl("Austin", locality, ignore.case = TRUE)) %>%
+  # Retain just checklists for which all species reported
+  filter(all_species_reported) 
+
+# Check that scientific names are reasonable values, looks good
+ebd_aust %>% 
+  pull(scientific_name) %>%
+  unique()
+
+# Get the frequency of monk parakeet sightings in complete checklists relative to all species in checklists
+ebd_aust_perc <- ebd_aust %>% 
+  # Per week across years, get the percentage of checklists that reported monk parakeets, regardless of whether group size was recorded
+  # Add years, weeks
+  dplyr::mutate(
+    week = week(observation_date),
+    year = year(observation_date)
+  ) %>%
+  dplyr::select(checklist_id, state, locality, observation_date, observation_count, week, year, scientific_name) %>%
+  group_by(week, year) %>%
+  dplyr::summarise(
+    mnk_checklist_obs = length(grep("Myiopsitta", scientific_name)),
+    all_species_checklist_obs = length(scientific_name),
+    perc_mnks = (length(grep("Myiopsitta", scientific_name))/length(scientific_name))*100
+  ) %>%
+  ungroup()
+
+glimpse(ebd_aust_perc)
+
+# Checking the distribution of the number of parakeet sightings when binning by week
+ebd_aust_perc %>%
+  pull(mnk_checklist_obs) %>%
+  table()
+
+# 244 weeks with 0 sightings; 96 weeks with 1 sighting; 61 weeks with 2 sightings, and so on
+# 0   1   2   3   4   5   6   7   8   9  10  11  12  13 
+# 244  96  61  55  42  50  44  29  38  21  21  24  15   4 
+#  14  15  16  17  18  20  21  24 
+#   4   7   1   2   2   1   1   1 
+
+saveRDS(ebd_aust_perc, file.path(path, "ebd_aust_perc.RDS"))
+
+```
+
+### Weekly population trends in 2004, 2011, 2019
+
+```{r chunk6}
+
+ebd_aust_perc <- readRDS(file.path(path, "ebd_aust_perc.RDS"))
+glimpse(ebd_aust_perc)
+
+# Get weekly checklist percentages for our sampling years in Austin
+ebd_aust_w <- ebd_aust_perc %>%
+  filter(year %in% c(2004, 2011, 2019)) %>%
+  droplevels() %>%
+  dplyr::mutate(
+    year = as.character(year),
+    year = factor(year)
+  ) %>%
+  droplevels() %>%
+  ungroup()
+
+glimpse(ebd_aust_w)
+
+# x11()
+ebd_aust_w %>%
+  ggplot(aes(x = week, y = perc_mnks), color = "black") +
+  geom_point(shape = 21, size = 2.5, fill = "grey") +
+  geom_line() +
+  facet_grid(rows = vars(year)) +
+  xlab("Week") +
+  ylab("Weekly parakeet sightings\n relative to other species (%)") +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size = 14)
+  )
+
+```
+
+Some weeks in 2004 had high percentages of parakeets reported in checklists compared to other species. I checked out these weeks to determine whether these percentages were due to many sightings of monk parakeets or rather few species reported in total.
+```{r chunk7, eval = FALSE}
+
+# Check larger weekly percentages reported across years
+ebd_aust_perc %>%
+  filter(perc_mnks > 10) %>%
+  kable(align = rep("c", ncol(.)))
+
+# A median of only 4 sightings of all species total were reported when weekly percentages were high for parakeets
+ebd_aust_perc %>%
+  filter(perc_mnks > 10) %>%
+  pull(all_species_checklist_obs) %>% 
+  median()
+
+# The median total sightings of all species reported per checklist across this dataset was 301
+ebd_aust_perc %>%
+  pull(all_species_checklist_obs) %>% 
+  median()
+
+```
+
+These larger weekly percentages (> 10%) are likely due to observers reporting few species overall in these checklists. When the weekly percentages of relative monk parakeet sightings were high, the median of total sightings was two orders of magnitude lower (4 total species) than the full dataset (301 total species). 
+
+## New Orleans
+
+```{r chunk8, eval = FALSE}
+
+ebd_norl <- read_ebd(file.path(file.path(path, "ebd_US-LA-071_200401_202001_relAug-2020"), "ebd_US-LA-071_200401_202001_relAug-2020.txt")) %>%
+  filter(grepl("New Orleans", locality, ignore.case = TRUE)) %>%
+  filter(all_species_reported) 
+
+# Check that scientific names have reasonable strings
+ebd_norl %>% 
+  pull(scientific_name) %>%
+  unique()
+
+# Get frequencies of monk parakeet sightings across sampling years as for Austin TX
+ebd_norl_perc <- ebd_norl %>% # Retain just checklists for which all species reported
+  # Per week across years, get the proportion of checklists that reported monk parakeets, regardless of whether group size was recorded
+  # Add years, weeks
+  dplyr::mutate(
+    week = week(observation_date),
+    year = year(observation_date)
+  ) %>%
+  dplyr::select(checklist_id, state, locality, observation_date, observation_count, week, year, scientific_name) %>%
+  group_by(week, year) %>%
+  dplyr::summarise(
+    mnk_checklist_obs = length(grep("Myiopsitta", scientific_name)),
+    all_species_checklist_obs = length(scientific_name),
+    perc_mnks = (length(grep("Myiopsitta", scientific_name))/length(scientific_name))*100
+  ) %>%
+  ungroup()
+
+glimpse(ebd_norl_perc)
+
+# Checking the distribution of the number of parakeet sightings when binning by week
+ebd_norl_perc %>%
+  pull(mnk_checklist_obs) %>%
+  table()
+
+# 299 weeks with 0 sightings; 162 weeks with 1 sighting; 43 weeks with 2 sightings, and so on
+# 0   1   2   3   4   5   6   7 
+# 299 162  43  22   4   2   1   1 
+
+saveRDS(ebd_norl_perc, file.path(path, "ebd_norl_perc.RDS"))
+
+```
+
+### Weekly population trends in 2004, 2011, 2019
+
+```{r chunk9}
+
+ebd_norl_perc <- readRDS(file.path(path, "ebd_norl_perc.RDS"))
+# glimpse(ebd_norl_perc)
+
+# Weekly checklist frequency across weeks per year, as a percentage
+ebd_norl_w <- ebd_norl_perc %>%
+  filter(year %in% c(2004, 2011, 2019)) %>%
+  droplevels() %>%
+  dplyr::mutate(
+    year = as.character(year),
+    year = factor(year)
+  ) %>%
+  droplevels() %>%
+  ungroup()
+
+# glimpse(ebd_norl_w)
+
+# Not all weeks had observations per year
+# 2004 had fewer checklists
+ebd_norl_w %>%
+  group_by(year) %>%
+  dplyr::summarise(n = n())
+
+# x11()
+ebd_norl_w %>%
+  ggplot(aes(x = week, y = perc_mnks), color = "black") +
+  geom_point(shape = 21, size = 2.5, fill = "grey") +
+  geom_line() +
+  facet_grid(rows = vars(year)) +
+  xlab("Week") +
+  ylab("Weekly parakeet sightings\n relative to other species (%)") +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    strip.text = element_text(size = 14)
+  )
+
+```
+
+# Checklist percentages across years
+
+Here I averaged the weekly percentages of parakeet sightings (relative to other species) by year for Austin and New Orleans. I performed this summary across the span of time represented by our sampling years (2004 to 2019). This plot was used as a main figure in the accompanying article.
+```{r chunk10}
+
+ebd_aust_perc <- readRDS(file.path(path, "ebd_aust_perc.RDS"))
+# glimpse(ebd_aust_perc)
+
+ebd_norl_perc <- readRDS(file.path(path, "ebd_norl_perc.RDS"))
+# glimpse(ebd_norl_perc)
+
+# Average weekly checklist frequency by year, as a percentage
+ebd_aust_norl <- ebd_aust_perc %>%
+  dplyr::mutate(
+    city = "Austin"
+  ) %>%
+  bind_rows(
+    ebd_norl_perc %>% 
+      dplyr::mutate(
+        city = "New Orleans"
+      )
+  ) %>%
+  dplyr::mutate(
+    year = as.character(year),
+    year = factor(year)
+  ) %>%
+  group_by(city, year) %>%
+  dplyr::summarise(
+    yr_avg = mean(perc_mnks),
+    yr_sd = sd(perc_mnks)
+  ) %>%
+  ungroup()
+
+glimpse(ebd_aust_norl)
+
+# Range of percentages of relative monk parakeet sightings across years and cities
+range(ebd_aust_norl$yr_avg)
+
+# Make a data frame of year coordinates for adding rectangles
+rect_df <- data.frame(
+  year_xmin = c(2003.5, 2010.5, 2018.5, 2003.5, 2010.5),
+  year_xmax = c(2004.5, 2011.5, 2019.5, 2004.5, 2011.5),
+  city = c(rep("Austin", 3), rep("New Orleans", 2))
+)
+
+# x11()
+
+ebd_aust_norl %>%
+  # Convert years to numeric to add rectangles below
+  dplyr::mutate(
+    year = as.numeric(as.character(year))
+  ) %>%
+  ggplot(aes(x = year, y = yr_avg), color = "black") +
+  # Add shaded rectangles for years recorded per city
+  geom_rect(data = rect_df, aes(xmin = year_xmin, xmax = year_xmax, ymin = 0, ymax = Inf), color = alpha("darkgoldenrod1", 1), fill = alpha("darkgoldenrod1", 0.45), inherit.aes = FALSE) +
+  geom_col(fill = "gray55", color = "black", size = 0.25) +
+  geom_errorbar(aes(ymin = yr_avg, ymax = yr_avg + yr_sd), color = "black", size = 0.25, width = 0.5) +
+  facet_grid(rows = vars(city)) +
+  scale_x_continuous(limits = c(2003.5, 2020.5), breaks = seq(2004, 2020, 1), labels = seq(2004, 2020, 1)) +
+  scale_y_continuous(limits = c(0, 20)) +
+  xlab("Year") +
+  ylab("Mean % and SD of monk parakeet sightings\n relative to other species") +
+  theme_bw() +
+  theme(
+    axis.ticks = element_line(size = 0.25),
+    axis.title = element_text(size = 12),
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 10, angle = 40, vjust = 0.75),
+    strip.text = element_text(size = 12),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+ggsave(file.path(gpath, "HierarchicalMapping_eBirdAustinNewOrl_PopTrends.jpeg"), units = "in", width = 6.5, height = 5, dpi = 300)
+
+```
+
+```{r chunk12, echo = FALSE, eval = FALSE, include = FALSE}
+
+# A figure for Valeria's SACNAS talk
+ebd_aust_perc <- readRDS(file.path(path, "ebd_aust_perc.RDS"))  %>%
+  ungroup()
+glimpse(ebd_aust_perc)
+
+# Average weekly checklist frequency by year, as a percentage
+ebd_aust <- ebd_aust_perc %>%
+  dplyr::mutate(
+    city = "Austin"
+  ) %>%
+  dplyr::mutate(
+    year = as.character(year),
+    year = factor(year)
+  ) %>%
+  group_by(city, year) %>%
+  dplyr::summarise(
+    yr_avg = mean(perc_mnks),
+    yr_se = std_err(perc_mnks)
+  ) %>%
+  ungroup()
+
+glimpse(ebd_aust)
+
+# Make a data frame of year coordinates for adding rectangles
+rect_df <- data.frame(
+  year_xmin = c(2004, 2011, 2019),
+  year_xmax = c(2005, 2012, 2020),
+  city = rep("Austin", 3)
+)
+
+gg <- ebd_aust %>%
+  # Convert years to numeric to add rectangles below
+  dplyr::mutate(
+    year = as.numeric(as.character(year))
+  ) %>%
+  ggplot(aes(x = year, y = yr_avg), color = "black") +
+  # Add shaded rectangles for years recorded per city
+  geom_rect(data = rect_df, aes(xmin = year_xmin, xmax = year_xmax, ymin = 0, ymax = Inf), color = "gold2", fill = "gold2", inherit.aes = FALSE) +
+  geom_errorbar(aes(ymin = yr_avg - yr_se, ymax = yr_avg + yr_se), color = "black", size = 0.5, width = 0.35) +
+  geom_line(aes(group = 1), size = 0.5) +
+  geom_point(size = 3, shape = 21, fill = "gray55", color = "black", stroke = 0.25) +
+  facet_grid(cols = vars(city), switch = "y") +
+  scale_x_continuous(limits = c(2004, 2020), breaks = seq(2004, 2020, 1), labels = seq(2004, 2020, 1)) +
+  scale_y_continuous(limits = c(0, 100)) +
+  xlab("Year") +
+  ylab("Mean checklist percentage") +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 14),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10, angle = 30, vjust = 0.75),
+    strip.text = element_text(size = 14),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+# Color strip labels by range
+g <- ggplot_gtable(ggplot_build(gg))
+stripr <- which(grepl('strip-t', g$layout$name)) # strip-l for left strips, strip-t for upper
+fills <- alpha("orange", 0.45)
+k <- 1
+for (i in stripr) {
+  j <- which(grepl('rect', g$grobs[[i]]$grobs[[1]]$childrenOrder))
+  g$grobs[[i]]$grobs[[1]]$children[[j]]$gp$fill <- fills[k]
+  k <- k+1
+}
+dev.off()
+
+tiff(file.path(gpath, "VP_SACNAS_HierarchicalMapping_eBirdAustin_PopTrends.tiff"), units = "in", width = 5.51, height = 4, res = 300) 
+grid.draw(g)
+dev.off()
+
+```
+
+# References
+
+    1. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
+    
+    2. Clark, C.J. 2017. eBird records show substantial growth of the Allen’s Hummingbird (Selasphorus sasin sedentarius) population in urban Southern California. The Condor, 119(1), 122–130. https://doi.org/10.1650/condor-16-153.1
+    
+    3. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
+
+```{r chunk13}
+
+sessionInfo()
+
+```

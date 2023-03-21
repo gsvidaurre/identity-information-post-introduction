@@ -1,0 +1,723 @@
+---
+title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 01:</center>
+subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Summary Statistics and Preliminary Visual Inspection</center>
+ &nbsp;
+author: |
+  <center style="font-style:normal;">
+  <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
+  &nbsp;
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
+  <br />
+  <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
+  &nbsp;
+date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B %Y')`</center>
+  <br />
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+---
+
+<style type="text/css">
+
+a:hover {
+  color: #23527c !important;
+}
+
+h1.title {
+  font-size: 32px;
+  color: black;
+  font-weight: normal;
+}
+
+h1 {
+   color: black;
+   font-size: 26px;
+   font-weight: normal;
+}
+
+h2 {
+   color: black;
+   font-size: 24px;
+   font-weight: bold;
+}
+
+h3 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+h4 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+body{ /* Normal */
+      font-size: 18px;
+  }
+  
+code.r{ /* Code block */
+    font-size: 18px;
+}
+</style>
+
+```{r global options, include = FALSE}
+
+knitr::opts_knit$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+```
+
+Introduced range calls were taken through a pre-processing workflow similar to previously published native range calls<a href='#References'><sup>[1]</sup></a>. Previously published introduced range calls for 2004 were provided by Susannah Bhurman-Deever<a href='#References'><sup>[2]</sup></a>, and were pre-processed as were all other calls. The package `warbleR`<a href='#References'><sup>[3]</sup></a> was used for pre-processing, making extended selection tables, and downstream analyses.
+
+Below are summary statistics of the combined native and introduced range call datasets across the individual and site social scales. See the methods and appendix of the associated publication for more information. Check out Github repositories from previous work for related analyses and code:
+
+- [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
+
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[4]</sup></a>
+
+Please cite both the associated papers and code (see DOIs on GitHub) if the code or analyses in these repositories are useful for your own research.
+```{r chunk1, load libraries, message = FALSE, warning = FALSE}
+
+rm(list = ls())
+
+X <- c("warbleR", "pbapply", "Rraven", "tidyverse", "ggplot2", "data.table", "lubridate", "pracma", "knitr", "ggsn", "maptools", "png", "rgdal", "rgeos", "sp")
+invisible(lapply(X, library, character.only = TRUE))
+
+# Suppress summarise warnings from dplyr
+options(dplyr.summarise.inform = FALSE)
+
+path <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Data"
+gpath <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Graphics"
+
+seed <- 401
+
+cores <- parallel::detectCores() - 2
+
+```
+
+Read in the extended selection table (EST) that contains metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales.
+```{r echo = TRUE, eval = TRUE}
+
+nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
+glimpse(nat_int_est)
+
+```
+
+The extended selection table in .RDS format, the selection table in .csv format, and the .wav files containing pre-processed calls will be made publicly available.
+
+Write out the selection table (e.g. the data frame associated with the extended selection table) for sharing, as well as the .wav files associated with the extended selection table. Each .wav file corresponds to a cut of the original recording that contains the selected call and a small margin around the given call (with the exception of 2004 calls, which were obtained for this study as cuts of original recordings). The reason for writing out the data in this way is that the .RDS file of the extended selection table saved above may not be compatible with later versions of R. 
+```{r chunk3, eval = FALSE}
+
+# Write out the selection table as a .csv
+write.csv(nat_inv_est, file.path(path, "nat_inv_indiv_site_seltbl.csv"), row.names = FALSE)
+
+# Write out the .wav files to a directory in which I'm using to compile data for sharing
+
+# Access the wave objects
+length(attr(nat_inv_est, "wave.objects"))
+attr(nat_inv_est, "wave.objects")[1]
+
+# Get the .wav objects and their respective filenames in order to write these out as separate .wav files
+wavs <- attr(nat_inv_est, "wave.objects")
+wav_nms <- names(attr(nat_inv_est, "wave.objects"))
+
+# x <- 1 testing
+tmp_path <- "/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introducion/Share_Data/Data/pre-processed_calls"
+invisible(pblapply(1:length(wavs), function(x){
+  writeWave(wavs[[x]], filename = file.path(tmp_path, wav_nms[x]), extensible = FALSE)
+}))
+
+```
+
+# Filtering out some calls
+
+I dropped individual scale calls that had been added to the site scale (1 call per known repeatedly sampled individual in the final individual scale dataset, suffix "site_scale").
+```{r chunk3}
+
+# 31 calls with the suffix "_site_scale". Not all of these belonged to the individuals in the final individual scale dataset, since some individuals that we repeatedly sampled were dropped due to low sample sizes after pre-processing
+nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>% 
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  pull(sound.files) %>%
+  length()
+
+# Get the "_site_scale" calls for the final dataset of known repeatedly sampled individuals
+indiv_ids <- nat_int_est %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  pull(Bird_ID) %>%
+  unique()
+
+# 17 total: 8 native and 9 introduced range
+indiv_ids
+
+# INT-UM1, INT-UM6, and INT-UM19 were each the sole bird sampled at sites BART, ASCA, and CAME, respectively. These sites were not included at the site scale, so these individuals did not have any "_site_scale" calls 
+# This leaves 14 calls to drop, each representing a call for a different repeatedly sampled individual included in the site scale dataset
+drop_is_calls <- nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  dplyr::filter(Bird_ID %in% indiv_ids) %>%
+  pull(sound.files)
+
+length(drop_is_calls)
+
+# Checking, looks good
+nat_int_est %>%
+  as_tibble() %>% 
+  dplyr::filter(sound.files %in% drop_is_calls) %>%
+  dplyr::select(sound.files, Bird_ID) %>%
+  kable(align = rep("c", nrow(.)))
+
+# Drop these calls from the extended selection table and continue with analyses
+# nat_int_est <- nat_int_est %>%
+  # dplyr::filter(!sound.files %in% drop_is_calls)
+
+# Don't use tidyverse since I want to filter both the data frame and the .wav objects in the EST
+nat_int_est <- nat_int_est[-grep(paste(paste("^", drop_is_calls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files), ]
+
+# 1582 calls remain out of the original 1596 calls read in above
+dim(nat_int_est)
+class(nat_int_est)
+
+```
+
+# Individual scale
+
+The total number of calls from repeatedly sampled individuals between ranges and by range.
+```{r chunk4}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Individual") %>%
+  dplyr::count() %>%
+  # Center all columns of the resulting table
+  kable(align = rep("c", ncol(.)))
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Individual") %>%
+  group_by(range) %>%
+  dplyr::count() %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The number of known repeatedly sampled individuals across ranges. 
+```{r chunk5}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Individual") %>%
+  group_by(range) %>%
+  dplyr::summarise(count = n_distinct(Bird_ID)) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The number of sites at which we sampled known repeatedly sampled individuals across ranges. 
+```{r chunk6}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Individual") %>%
+  group_by(range) %>%
+  dplyr::summarise(count = n_distinct(site)) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The number of calls per known repeatedly sampled individual across ranges, and recording dates.
+```{r chunk7}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Individual") %>%
+  group_by(range, Bird_ID, lat, lon, site, dept_state) %>%
+  dplyr::count() %>%
+  arrange(range, site) %>%
+  inner_join(
+    nat_int_est %>%
+      as_tibble() %>%
+      filter(social_scale == "Individual") %>%
+      group_by(range, Bird_ID) %>%
+      distinct(date),
+    by = c("range", "Bird_ID")
+  ) %>%
+  ungroup() %>%
+  dplyr::mutate(
+    lat = round(lat, 3),
+    lon = round(lon, 3)
+  ) %>%
+  dplyr::select(Bird_ID, site, dept_state, lat, lon, n, date) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The median and range of the number of calls per known repeatedly sampled individual across ranges.
+```{r chunk8}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Individual") %>%
+  group_by(range, Bird_ID) %>%
+  dplyr::summarise(num_calls = length(Bird_ID)) %>%
+  dplyr::summarise(
+    median_calls = round(median(num_calls), 2),
+    range_calls = paste(round(range(num_calls), 2), collapse = " - ")
+  ) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The median and range of the signal to noise ration (SNR) at individual scale across ranges. SNR values of 1 represent signals that were the same amplitude as background noise (poor quality). SNR values of 1 point to signals that were louder than surrounding noise.
+```{r chunk9}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Individual") %>%
+  group_by(range) %>%
+  filter(!is.na(SNR)) %>%
+  dplyr::summarise(
+    median_SNR = round(median(SNR), 2),
+    range_SNR = paste(round(range(SNR), 2), collapse = " - ")
+  ) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+# Site scale
+
+Total site scale calls.
+```{r}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Site") %>%
+  dplyr::count() %>%
+  # Center all columns of the resulting table
+  kable(align = rep("c", ncol(.)))
+
+```
+
+
+The total number of sites across ranges.
+```{r chunk10}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Site") %>%
+  dplyr::summarise(count = n_distinct(site_year))
+
+```
+
+The number of site-years across ranges (e.g. unique sites). 
+```{r chunk11}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Site") %>%
+  group_by(range) %>%
+  dplyr::summarise(count = n_distinct(site_year)) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The number of sites across ranges and years. 
+```{r chunk12}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Site") %>%
+  group_by(range, year) %>%
+  dplyr::summarise(count = n_distinct(site_year)) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The total number of calls per site-year across ranges.
+```{r chunk13}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Site") %>%
+  group_by(range) %>%
+  dplyr::summarise(num_calls = length(range)) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The median and range of the number of calls per site-year.
+```{r chunk14}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Site") %>%
+  group_by(range, site_year) %>%
+  dplyr::summarise(num_calls = length(site_year)) %>%
+  dplyr::summarise(
+    median_calls = round(median(num_calls), 2),
+    range_calls = paste(round(range(num_calls), 2), collapse = " - ")
+  ) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The median and range of SNR of site-years across ranges by range.
+```{r chunk15}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Site") %>%
+  group_by(range) %>%
+  filter(!is.na(SNR)) %>%
+  dplyr::summarise(
+    median_SNR = round(median(SNR), 2),
+    range_SNR = paste(round(range(SNR), 2), collapse = " - ")
+  ) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+The number of calls, sampling dates and geographic coordinates per site-year across ranges.
+```{r chunk16}
+
+nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Site") %>%
+  group_by(range, site, year, dept_state, introduced_city, lat, lon) %>%
+  distinct(date) %>%
+  arrange(range, site, dept_state, year) %>%
+  ungroup() %>%
+  inner_join(
+    nat_int_est %>%
+      as_tibble() %>%
+      filter(social_scale == "Site") %>%
+      group_by(range, site, date, lat, lon) %>%
+      dplyr::summarise(
+        n_calls = length(sound.files)
+      ),
+  by = c("range", "site", "date", "lat", "lon")
+  ) %>%
+  dplyr::mutate(
+    lat = round(lat, 3),
+    lon = round(lon, 3)
+  ) %>%
+  dplyr::select(range, site, dept_state, introduced_city, lat, lon, n_calls, date) %>%
+  kable(align = rep("c", ncol(.)))
+
+```
+
+# Preliminary visual inspection
+
+Call catalogs or lexicons were made at the individual and site social scales across ranges. These contained a subsample of calls per social scale for preliminary visual inspection.
+
+Randomly sample 3 calls per known repeatedly sampled individual across ranges.
+```{r chunk17, eval = FALSE}
+
+gpath <- "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction/images"
+
+set.seed(seed)
+
+icalls <- nat_int_est %>%
+  filter(social_scale == "Individual") %>%
+  group_by(Bird_ID) %>%
+  nest() %>%
+  ungroup() %>%
+  dplyr::mutate(
+    rsamp_call = purrr::map2(data, 3, sample_n, replace = FALSE)
+  ) %>%
+  dplyr::select(-data) %>%
+  unnest(rsamp_call) %>%
+  pull(sound.files)
+
+icalls
+
+heat_light <- function(x){
+  heat.colors(x, alpha = 0.65)
+}
+
+catalog(X = nat_int_est[grep(paste(paste("^", icalls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files), ], flim = c(0, 9), nrow = 5, ncol = 5, ovlp = 90, wl = 378, orientation = "h", labels = c("Bird_ID", "site_year"), mar = 0.01, cex = 0.75, img.suffix = "indiv_scale", parallel = cores, path = path, group.tag = "Bird_ID", max.group.cols = 4, tag.pal = list(heat_light), legend = 0)
+
+img_files <- list.files(path, pattern = "-indiv_scale.jpeg")
+img_files
+
+# Moved files to a graphics folder
+file.rename(from = file.path(path, img_files), to = file.path(gpath, img_files))
+
+```
+
+![Individual scale pp 1](/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction/images/Catalog_p1-indiv_scale.jpeg)
+
+![Individual scale pp 2](/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction/images/Catalog_p2-indiv_scale.jpeg)
+
+For the site scale, I randomly sampled 5 calls per 6 randomly sampled site-years per range represented by more than 20 calls.
+```{r chunk18, eval = FALSE}
+
+set.seed(seed)
+
+rsites <- nat_int_est %>%
+  filter(social_scale == "Site") %>%
+  group_by(range, site_year) %>%
+  # Get number of calls per site-year
+  dplyr::summarise(
+    n_calls = length(sound.files)
+  ) %>%
+  # Drop sites with less than 20 calls
+  filter(n_calls >= 20) %>%
+  ungroup() %>%
+  group_by(range) %>%
+  nest() %>%
+  ungroup() %>%
+  dplyr::mutate(
+    rsamp_sites = purrr::map2(data, 6, sample_n, replace = FALSE)
+  ) %>%
+  dplyr::select(-data) %>%
+  unnest(rsamp_sites) %>%
+  pull(site_year)
+
+rsites
+
+set.seed(seed)
+
+scalls <- nat_int_est %>%
+  filter(social_scale == "Site") %>%
+  filter(site_year %in% rsites) %>%
+  group_by(site_year) %>%
+  nest() %>%
+  ungroup() %>%
+  dplyr::mutate(
+    rsamp_call = purrr::map2(data, 5, sample_n, replace = FALSE)
+  ) %>%
+  dplyr::select(-data) %>%
+  unnest(rsamp_call) %>%
+  pull(sound.files)
+
+scalls
+
+# Subset the data from by these calls, and order by range
+tmp_est <- nat_int_est[grep(paste(paste("^", scalls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files), ]
+tmp_est <- tmp_est[order(tmp_est$range), ]
+# View(tmp_est)
+
+# Ordering the extended selection table didn't change the way the spectrograms are plotted, that's ok
+catalog(X = tmp_est, flim = c(0, 9), nrow = 5, ncol = 6, ovlp = 90, wl = 378, orientation = "h", labels = c("range", "site_year"), mar = 0.01, cex = 0.75, img.suffix = "site_scale", parallel = cores, path = path, group.tag = "site_year", max.group.cols = 3, tag.pal = list(heat_light), legend = 0)
+
+img_files <- list.files(path, pattern = "-site_scale.jpeg")
+img_files
+
+# Moved files to a graphics folder
+file.rename(from = file.path(path, img_files), to = file.path(gpath, img_files))
+
+```
+
+![Site scale, pp 1](/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction/images/Catalog_p1-site_scale.jpeg)
+
+![Site scale, pp 2](/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction/images/Catalog_p2-site_scale.jpeg)
+
+# Sampling maps
+
+Sampling map of Uruguay (native range).
+```{r echo = TRUE, eval = FALSE}
+
+poly_path <- "/media/gsvidaurre/MYIOPSITTA/R/Uruguay2017_MonkParakeet_CallAnalysis/Data/Site_Recordings/"
+
+# Native range coordinates
+nat_coords <- nat_int_est %>% 
+  dplyr::filter(range == "Native") %>% 
+  as_tibble() %>% 
+  dplyr::select(
+    lat, lon, dept_state, region
+  )
+
+glimpse(nat_coords)
+
+# Uruguay county border
+URY_adm0 <- readOGR(dsn = poly_path, layer = "URY_adm0")
+slotNames(URY_adm0)
+proj4string(URY_adm0)
+
+# Uruguay county borders
+URY_adm1 <- readOGR(dsn = poly_path, layer = "URY_adm1")
+slotNames(URY_adm1)
+proj4string(URY_adm1)
+
+# Read in Argentina and Brazil country borders
+a <- readRDS(file.path(poly_path, "gadm36_ARG_0_sp.rds"))
+b <- readRDS(file.path(poly_path, "gadm36_BRA_0_sp.rds"))
+
+n <- 12
+# pie(rep(1, n), col = heat.colors(n))
+
+# make colors for water and land fill colors
+wfl <- gray.colors(n, alpha = 0.5)[12]
+lfl <- "white"
+
+unique(nat_coords$dept_state)
+unique(nat_coords$region)
+
+# order departments to match the geographic transect
+nat_coords$dept_state <- factor(nat_coords$dept_state, levels = c("Colonia", "San Jose", "Salto", "Canelones", "Montevideo", "Maldonado", "Rocha"))
+nat_coords$region <- nat_coords$dept_state
+
+nat_coords$region <- gsub("Canelones|Montevideo", "Canelones & Montevideo", nat_coords$region)
+nat_coords$region <- factor(nat_coords$region, levels = c("Colonia", "San Jose", "Salto", "Canelones & Montevideo", "Maldonado", "Rocha"))
+
+bufx <- 0.5
+bufy <- 0.3
+
+dev.off()
+
+jpeg(file.path(gpath, "Sampling_map_URY.jpeg"), width = 3.5, height = 4, units = "in", res = 300)
+
+gg_ury <- ggplot() +
+  geom_polygon(aes(x = long, y = lat, group = group), color = "black",
+               fill = lfl, size = 0.4, data = URY_adm0) + 
+  geom_polygon(aes(x = long, y = lat, group = group), color = "black",
+               fill = lfl, size = 0.4, data = a) + 
+  geom_polygon(aes(x = long, y = lat, group = group), color = "black",
+               fill = lfl, size = 0.4, data = b) + 
+  geom_polygon(aes(x = long, y = lat, group = group), color = "black",
+               fill = lfl, size = 0.4, data = URY_adm1) + 
+  geom_point(data = nat_coords, aes(x = lon, y = lat), fill = scales::alpha("navy", 0.1), color = scales::alpha("navy", 0.5), shape = 21, size = 3) +
+  guides(color = "none", shape = "none", size = "none", fill = "none") +
+  xlab("") + ylab("") + 
+  theme(
+    panel.background = element_rect(fill = wfl), 
+    panel.border = element_rect(fill = NA, color = "black", size = 1),
+    plot.background = element_rect(fill = lfl), 
+    plot.title = element_text(size = 25, hjust = 0.5),
+    panel.grid.major = element_line(size = 1, colour = wfl), 
+    panel.grid.minor = element_line(size = 0.75, colour = wfl), 
+    axis.line = element_line(size = 0.25, colour = "black"), 
+    axis.text = element_text(size = 11)
+  ) +
+  coord_cartesian(xlim = c(min(nat_coords$lon) - bufx, max(nat_coords$lon) + bufx), y = c(min(nat_coords$lat) - bufy, max(nat_coords$lat) + bufy*3))
+
+# gg_ury
+
+gg_ury <- gg_ury +
+  scalebar(x.min = -56.5, x.max = -54.5, y.min = -35.2, y.max = -34.8, dist = 50, model = "WGS84", height = 0.25, st.size = 3, st.dist = 0.3, transform = TRUE, dist_unit = "km", border.size = 0.5)
+
+buf <- 0.1
+symbol <- 1
+symbol <- sprintf("%02.f", symbol)
+symbol <- readPNG(paste0(system.file("symbols", package = "ggsn"), 
+                         "/", symbol, ".png"))
+symbol <- rasterGrob(symbol, interpolate = TRUE)
+gg_ury <- gg_ury + annotation_custom(grob = symbol, xmin = -53.6, xmax = -53.1, 
+                                       ymin = -35.2, ymax = -34.5)
+
+gg_ury
+
+dev.off()
+
+```
+
+Inset sampling map of U.S. (introduced range). Get Canada and Mexico too.
+```{r echo = TRUE, eval = FALSE}
+
+# poly_path <- "/media/gsvidaurre/MYIOPSITTA/R/Uruguay2017_MonkParakeet_CallAnalysis/Data/Site_Recordings/"
+
+states <- map_data("state")
+str(states)
+
+canada <- map_data("world") %>% 
+  dplyr::filter(region == "Canada")
+str(canada)
+
+mexico <- map_data("world") %>% 
+  dplyr::filter(region == "Mexico")
+str(mexico)
+
+# Introduced range coordinates
+int_coords <- nat_int_est %>% 
+  dplyr::filter(range == "Introduced") %>% 
+  as_tibble() %>% 
+  dplyr::select(
+    lat, lon, dept_state, region
+  )
+
+glimpse(int_coords)
+
+n <- 12
+
+# make colors for water and land fill colors
+wfl <- gray.colors(n, alpha = 0.5)[12]
+lfl <- "white"
+
+unique(int_coords$dept_state)
+unique(int_coords$region)
+
+bufx <- 0.5
+bufy <- 0.3
+
+jpeg(file.path(gpath, "Sampling_map_USA.jpeg"), width = 4.5, height = 4, units = "in", res = 300)
+
+gg_usa <- ggplot() +
+  geom_polygon(aes(x = long, y = lat, group = group), color = "black",
+               fill = lfl, size = 0.4, data = states) + 
+  geom_polygon(aes(x = long, y = lat, group = group), color = "black",
+               fill = lfl, size = 0.4, data = canada) + 
+  geom_polygon(aes(x = long, y = lat, group = group), color = "black",
+               fill = lfl, size = 0.4, data = mexico) + 
+  geom_point(data = int_coords, aes(x = lon, y = lat), fill = scales::alpha("gold", 0.1), color = scales::alpha("gold", 0.5), shape = 21, size = 3) +
+  guides(color = "none", shape = "none", size = "none", fill = "none") +
+  xlab("") + ylab("") + 
+  theme(
+    panel.background = element_rect(fill = wfl), 
+    panel.border = element_rect(fill = NA, color = "black", size = 1),
+    plot.background = element_rect(fill = lfl), 
+    plot.title = element_text(size = 25, hjust = 0.5),
+    panel.grid.major = element_line(size = 1, colour = wfl), 
+    panel.grid.minor = element_line(size = 0.75, colour = wfl), 
+    axis.line = element_line(size = 0.25, colour = "black"), 
+    axis.text = element_text(size = 11)
+  ) +
+  coord_cartesian(xlim = c(-118, -70), y = c(26, 49))
+
+# gg_usa
+
+gg_usa <- gg_usa +
+    scalebar(x.min = -96, x.max = -86, y.min = 27, y.max = 30, dist = 500, model = "WGS84", height = 0.15, st.size = 3, st.dist = 0.25, transform = TRUE, dist_unit = "km", border.size = 0.5)
+
+# gg_usa
+
+buf <- 0.1
+symbol <- 1
+symbol <- sprintf("%02.f", symbol)
+symbol <- readPNG(paste0(system.file("symbols", package = "ggsn"), 
+                         "/", symbol, ".png"))
+symbol <- rasterGrob(symbol, interpolate = TRUE)
+gg_usa <- gg_usa + annotation_custom(grob = symbol, xmin = -75, xmax = -70, 
+                                       ymin = 28, ymax = 31)
+
+gg_usa
+
+dev.off()
+
+```
+
+
+# References
+
+    1. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
+    
+    2. Buhrman-Deever, S.C., Rappaport, A.R. and J.W. Bradbury. 2007. Geographic variation in contact calls of feral North American populations of the monk parakeet. The Condor 109(2), 389-398. https://doi.org/10.1093/condor/109.2.389
+    
+    3. Araya‐Salas, M., G. Smith‐Vidaurre. 2017. warbleR: An R package to streamline analysis of animal acoustic signals. Methods in Ecology and Evolution 8(2), 184-191. https://doi.org/10.1111/2041-210X.12624
+    
+    4. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
+    
+```{r chunk19}
+
+sessionInfo()
+
+```

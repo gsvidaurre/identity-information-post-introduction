@@ -1,0 +1,748 @@
+---
+title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 10:</center>
+subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Mantel Tests</center>
+ &nbsp;
+author: |
+  <center style="font-style:normal;">
+  <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
+  &nbsp;
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
+  <br />
+  <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
+  &nbsp;
+date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
+  <br />
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+---
+
+<style type="text/css">
+
+a:hover {
+  color: #23527c !important;
+}
+
+h1.title {
+  font-size: 32px;
+  color: black;
+  font-weight: normal;
+}
+
+h1 {
+   color: black;
+   font-size: 26px;
+   font-weight: normal;
+}
+
+h2 {
+   color: black;
+   font-size: 24px;
+   font-weight: bold;
+}
+
+h3 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+h4 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+body{ /* Normal */
+      font-size: 18px;
+  }
+  
+code.r{ /* Code block */
+    font-size: 18px;
+}
+</style>
+
+```{r global options, include = FALSE}
+
+knitr::opts_knit$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+```
+
+Mantel tests were conducted per range to evaluate the strength and significance of acoustic convergence across social scales. For the site scale, Mantel tests were conducted over similarity methods: spectrographic cross-correlation (SPCC) and random forests, as well as over the 3 datasets used to address potential repeated sampling of individuals: no filtering (full dataset), filtering by Gaussian mixture models, and filtering by visual classification. See the supplement of the associated publication for more information about these analyses.
+
+Check out Github repositories from previous work for related analyses and code:
+
+- [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
+
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[4]</sup></a>
+
+Please cite the associated papers as well as our code (see DOIs on GitHub) if the code or analyses across these repositories are useful for your own research.
+```{r echo = TRUE, eval = TRUE, message = FALSE}
+
+rm(list = ls())
+
+X <- c("tidyverse", "pbapply", "plyr", "dplyr", "data.table", "parallel", "vegan", "knitr", "rlist")
+
+invisible(lapply(X, library, character.only = TRUE))
+
+# Suppress summarise warnings from dplyr
+options(dplyr.summarise.inform = FALSE)
+
+path <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Data"
+gpath <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Graphics"
+seed <- 401
+cores <- parallel::detectCores() - 2
+
+```
+
+Read in the extended selection table (EST) that contains metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales.
+```{r echo = TRUE, eval = TRUE}
+
+nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
+glimpse(nat_int_est)
+
+```
+
+# Filtering out some calls
+
+I dropped individual scale calls that had been added to the site scale (1 call per known repeatedly sampled individual in the final individual scale dataset, suffix "site_scale").
+```{r chunk3}
+
+# 31 calls with the suffix "_site_scale". Not all of these belonged to the individuals in the final individual scale dataset, since some individuals that we repeatedly sampled were dropped due to low sample sizes after pre-processing
+nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>% 
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  pull(sound.files) %>%
+  length()
+
+# Get the "_site_scale" calls for the final dataset of known repeatedly sampled individuals
+indiv_ids <- nat_int_est %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  pull(Bird_ID) %>%
+  unique()
+
+# 17 total: 8 native and 9 introduced range
+indiv_ids
+
+# INT-UM1, INT-UM6, and INT-UM19 were each the sole bird sampled at sites BART, ASCA, and CAME, respectively. These sites were not included at the site scale, so these individuals did not have any "_site_scale" calls 
+# This leaves 14 calls to drop, each representing a call for a different repeatedly sampled individual included in the site scale dataset
+drop_is_calls <- nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  dplyr::filter(Bird_ID %in% indiv_ids) %>%
+  pull(sound.files)
+
+length(drop_is_calls)
+
+# Checking, looks good
+nat_int_est %>%
+  as_tibble() %>% 
+  dplyr::filter(sound.files %in% drop_is_calls) %>%
+  dplyr::select(sound.files, Bird_ID) %>%
+  kable(align = rep("c", nrow(.)))
+
+# Drop these calls from the extended selection table and continue with analyses
+# nat_int_est <- nat_int_est %>%
+  # dplyr::filter(!sound.files %in% drop_is_calls)
+
+# Don't use tidyverse since I want to filter both the data frame and the .wav objects in the EST
+nat_int_est <- nat_int_est[-grep(paste(paste("^", drop_is_calls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files), ]
+
+# 1582 calls remain out of the original 1596 calls read in above
+dim(nat_int_est)
+class(nat_int_est)
+
+```
+
+# Individual scale
+
+We used 5 native range and 5 introduced range individuals for Mantel tests at the individual scale. Although these native range individuals were sampled at a single site (site 1145 sampled in 2017), and the introduced range individuals sampled at 3 sites (city of Austin in 2019), a previous validation analysis found that these individuals represented similar patterns of acoustic variation<a href='#References'><sup>[2]</sup></a>. When individuals from larger geographic distancs were included, calls overlapped more in acoustic space<a href='#References'><sup>[2]</sup></a>. Aside from the introduced range individuals recorded in Austin, most introduced range individuals were recorded over very large geographic distances. As such, we used native range birds from site 1145 and introduced range birds from Austin 2019 for the fairest comparison possible of individual signatures in our dataset. 
+
+Number of calls per native range individual at site 1145.
+```{r echo = TRUE, eval = TRUE}
+
+nat_int_est %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  dplyr::filter(range == "Native") %>%
+  dplyr::filter(site == "1145") %>%
+  group_by(Bird_ID) %>%
+  dplyr::summarise(n_calls = length(sound.files))
+
+```
+
+Number of calls per native range individual recorded in Austin 2019. 
+```{r echo = TRUE, eval = TRUE}
+
+nat_int_est %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  dplyr::filter(range == "Introduced") %>%
+  dplyr::filter(introduced_city == "Austin" & year == 2019) %>%
+  group_by(Bird_ID) %>%
+  dplyr::summarise(n_calls = length(sound.files))
+
+```
+
+# Mantel tests 
+
+# Individual scale, SPCC 
+
+This analysis addresses the first half of the hierachical mapping analysis (individual scale, site scale needs filtering and analyses run in triplicate for the potential repeated sampling issue). Mantel tests were performed with all native and all introduced individuals, then with individuals recorded over restricted geographic areas (a single site-year for the native range, a single city-year for the introduced range). A partial Mantel test was conducted for the introduced range birds to control for site identity, as the introduced range birds were recorded at 3 different sites. We used only SPCC similarity for Mantel tests at the individual scale, as random forests models had been trained on individual scale calls.
+```{r echo = TRUE, eval = FALSE}
+
+xc_mat_spec <- readRDS(file.path(path, "xc_mat_nat_int_1582calls.RDS"))
+dim(xc_mat_spec) == nrow(nat_int_est)
+glimpse(xc_mat_spec)
+
+# Iterate over ranges
+range <- c("Native", "Introduced")
+sts <- c("1145_2017", "SOCC_2019|ELEM_2019|INTR_2019")
+perms <- 9999
+file_nm <- "Mantel_results_indiv_scale.txt"
+
+# A txt file will be populated by appending Mantel test results
+file.remove(file.path(path, file_nm)) # remove previous versions as needed
+
+# i <- 1 # testing
+invisible(pblapply(1:length(range), function(i){
+  
+    # Subset the EST by the given range
+    rng <- range[i]
+    
+    tmp_df <- nat_int_est %>%
+      dplyr::filter(social_scale == "Individual") %>%
+      dplyr::filter(range == rng) %>%
+      dplyr::filter(grepl(sts[i], site_year)) %>%
+      droplevels()
+    # glimpse(tmp_df)
+  
+    # Get calls for the given iteration
+    calls <- tmp_df %>%
+      pull(sound.files)
+    # head(calls)
+  
+    # Subset the SPCC matrix, convert to distance matrix
+    xc_mat_tmp <- xc_mat_spec[grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), dimnames(xc_mat_spec)[[1]]), grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), dimnames(xc_mat_spec)[[2]])]
+    # str(xc_mat_tmp)
+  
+    xc_mat_dist <- stats::as.dist(1 - xc_mat_tmp, diag = TRUE, upper = TRUE)
+    # str(xc_mat_dist)
+  
+    # Make a binary identity matrix for individual identity
+    # Predictor matrix of individual identity membership for Mantel tests
+    id_indiv <- unlist(lapply(1:nrow(tmp_df), function(x){
+        return(as.numeric(tmp_df$Bird_ID[x] == tmp_df$Bird_ID))
+    }))
+
+    id_mat <- matrix(id_indiv, nrow = nrow(tmp_df), ncol = nrow(tmp_df), dimnames = list(tmp_df$Bird_ID, tmp_df$Bird_ID))
+    # str(id_mat)
+
+    id_mat_dist <- stats::as.dist(1 - id_mat, diag = TRUE, upper = TRUE)
+    # str(id_mat_dist)
+  
+    # Make a binary identity matrix for site-year identity if on the introduced range
+    if(range[i] == "Introduced"){
+      # Predictor matrix of site membership for partial Mantel tests
+      id_site <- unlist(lapply(1:nrow(tmp_df), function(x){
+          return(as.numeric(tmp_df$site_year[x] == tmp_df$site_year))
+      }))
+
+      part_mat <- matrix(id_site, nrow = nrow(tmp_df), ncol = nrow(tmp_df), dimnames = list(tmp_df$site_year, tmp_df$site_year))
+
+      part_mat_dist <- stats::as.dist(1 - part_mat, diag = TRUE, upper = TRUE)
+      # str(part_mat_dist)
+    }
+  
+    # Perform a partial Mantel test for the introduced range only
+    if(range[i] == "Native"){
+      mntl <- vegan::mantel(xdis = id_mat_dist, ydis = xc_mat_dist, method = "pearson", permutations = perms, parallel = cores)
+      partialM <- "N"
+    } else if(range[i] == "Introduced"){
+      mntl <- vegan::mantel.partial(xdis = id_mat_dist, ydis = xc_mat_dist, zdis = part_mat_dist, method = "pearson", permutations = perms, parallel = cores)
+      partialM <- "Y"
+    }
+  
+    # Make a data frame summarizing the output
+    res_df <- data.frame(sim_method = "SPCC", range = range[i], num_indivs = length(unique(tmp_df$Bird_ID)), num_calls = dim(id_mat)[1], num_site_year = length(unique(tmp_df$site_year)), partial_Mantel = partialM, mantel_r = round(mntl$statistic, digits = 2), mantel_p = mntl$signif, permutations = perms)
+  
+    # If on the first iteration, write a new file
+    if(i == 1){
+      write.table(res_df, file = file.path(path, file_nm), sep = ",", col.names = TRUE, quote = FALSE, row.names = FALSE)
+
+    # Append to the existing file in subsequent iterations
+    } else {
+      write.table(res_df, file = file.path(path, file_nm), sep = ",", col.names = FALSE, quote = FALSE, row.names = FALSE, append = TRUE)
+    }
+  
+    return(res_df)
+  
+}))
+
+```
+
+## Site scale
+
+### General approach
+
+We performed analyses to assess hierarchical mapping at the site scale while accounting for potential repeated sampling of individuals. Mantel tests were performed on 3 versions of the site scale data: 1) all calls per site-year, 2) calls filtered by the SPCC threshold and then clustering, and 3) calls filtered by SPCC threshold, clustering, then multi-observer visual classification. 
+
+Mantel tests were performed to compare site scale convergence between ranges. For these tests, when a site or city was sampled in more than one year, we used only calls from the most recent sampling year. Calls recorded across years in the same introduced range site or city were used in Mantel tests over time (Austin and New Orleans only). Finally, for the visual classification version of the site scale dataset, when a site-year was assessed by multiple observers (4 sites), we randomly chose classifications from one observer per site-year.
+
+
+## Mantel tests per range
+
+We performed Mantel tests for the three site-scale datasets and both similarity methods. We retained calls recorded in the cities of Austin and New Orleans in more recent sampling years. Austin and New Orleans calls from earlier sampling years were used in Mantel tests to compare site scale convergence over time (see below). Run Mantel tests using SPCC and random forests similarity, as well as the 3 datasets generated above for the site scale. I also ran a Mantel test for the native range (no filtering for repeated individuals) as reported in our previous work<a href='#References'><sup>[1]</sup></a> with the 4 calls for UM4 retained at the site scale.
+
+Read in similarity matrices and change dimension names for grepping below per Mantel test.
+```{r echo = TRUE, eval = TRUE}
+
+# Read the SPCC similarity matrix for the full dataset of calls
+xc_mat_spec <- readRDS(file.path(path, "xc_mat_nat_int_1582calls.RDS"))
+
+# Read in random forests similarity (proximity matrix) for the validation and prediction call datasets
+vp_prox_mat <- readRDS(file.path(path, "rf_validatn_predictn_prox_mat.RDS"))
+
+# Filter the random forests similarity matrix by the calls used for prediction
+# 
+# Random forests datasets (training, validation, prediction)
+# sup_rf_df <- read.csv(file.path(path, "supervised_RF_datasets_acousticSimilarity.csv"))
+# 
+# predictn_df <- sup_rf_df %>%
+#   dplyr::filter(rf_set == "prediction") %>%
+#   droplevels()
+# 
+# # Add dimension names to the RF similarity matrix
+# dimnames(predictn_prox_mat) <- list(predictn_df$sound.files, predictn_df$sound.files)
+
+```
+
+
+Read in the 3 site scale datasets.
+```{r echo = TRUE, eval = TRUE}
+
+site_scale_nf <- readRDS(file.path(path, "site_scale_nf.RDS"))
+site_scale_cf <- readRDS(file.path(path, "site_scale_cf.RDS"))
+site_scale_vf <- readRDS(file.path(path, "site_scale_vf.RDS"))
+
+```
+
+
+Perform the Mantel tests by iterating over ranges, similarity methods, and data subsets representing approaches for addressing potential repeated sampling of individuals.
+```{r echo = TRUE, eval = FALSE}
+
+ranges <- c("Native", "Introduced")
+sim_meth <- c("SPCC", "Random forests")
+data_subset <- c("Full", "Clustering", "Visual inspection")
+
+mat_list <- list(xc_mat_spec, vp_prox_mat)
+df_list <- list(site_scale_nf, site_scale_vf, site_scale_cf)
+
+perms <- 9999
+file_nm <- "Mantel_results_site_scale_spatial.txt"
+
+# A txt file will be populated by appending Mantel test results
+file.remove(file.path(path, file_nm)) # remove previous versions as needed
+
+# i <- 1
+# j <- 1
+# z <- 1 # testing
+invisible(pblapply(1:length(ranges), function(i){
+  
+  lapply(1:length(sim_meth), function(j){
+    
+    lapply(1:length(data_subset), function(z){
+    
+      # Initialize the data frame of calls for the given site scale dataset
+      ss_df <- df_list[[z]]
+      # glimpse(ss_df)
+      
+      # Filter the extended selection table by calls in the given site scale dataset
+      dats <- nat_int_est %>%
+        as_tibble() %>%
+        dplyr::filter(sound.files %in% ss_df$sound.files)
+        # glimpse(dats)
+      
+      # Subset the data frame by the given range
+      rng <- ranges[i]
+      
+      tmp_df <- dats %>%
+        dplyr::filter(range == rng) %>%
+        droplevels()
+  
+      # unique(tmp_df$range)
+      
+      # Get calls for the given range
+      calls <- tmp_df %>%
+        pull(sound.files)
+      
+      # head(calls, 25)
+      
+      # Initialize the correct similarity matrix
+      sim_mat <- mat_list[[j]]
+      
+      # Subset the similarity matrix by the calls for the given range in the given dataset
+      sim_mat_tmp <- sim_mat[grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), dimnames(sim_mat)[[1]]), grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), dimnames(sim_mat)[[2]])]
+  
+      # Convert to distance matrix by subtracting from 1
+      # Convert to a dist object for the Mantel test
+      sim_mat_dist <- stats::as.dist(1 - sim_mat_tmp, diag = TRUE, upper = TRUE)
+      # str(sim_mat_dist)
+  
+      # Make a binary identity matrix for site-year identity
+      # Predictor matrix of site-year identity membership for Mantel tests
+      id_site_year <- unlist(lapply(1:nrow(tmp_df), function(y){
+        return(as.numeric(tmp_df$site_year[y] == tmp_df$site_year))
+      }))
+
+      # Convert the vector into a similarity matrix
+      id_mat <- matrix(id_site_year, nrow = nrow(tmp_df), ncol = nrow(tmp_df), dimnames = list(tmp_df$site_year, tmp_df$site_year))
+      # head(id_mat)
+
+      # Convert to a binary distance matrix of site-year identity
+      id_mat_dist <- stats::as.dist(1 - id_mat, diag = TRUE, upper = TRUE)
+      # str(id_mat_dist)
+  
+      # Perform the Mantel test
+      mntl <- vegan::mantel(xdis = id_mat_dist, ydis = sim_mat_dist, method = "pearson", permutations = perms, parallel = cores)
+  
+      # Make a data frame summarizing the output
+      res_df <- data.frame(method = sim_meth[j], range = ranges[i], dataset = data_subset[z], num_calls = nrow(tmp_df), num_site_year = length(unique(tmp_df$site_year)), partial_Mantel = "N", mantel_r = round(mntl$statistic, digits = 2), mantel_p = mntl$signif, permutations = perms)
+  
+    # If on the first iteration, write a new file
+    if(i == 1 & j == 1 & z == 1){
+      write.table(res_df, file = file.path(path, file_nm), sep = ",", col.names = TRUE, quote = FALSE, row.names = FALSE)
+
+    # Append to the existing file in subsequent iterations
+    } else {
+      write.table(res_df, file = file.path(path, file_nm), sep = ",", col.names = FALSE, quote = FALSE, row.names = FALSE, append = TRUE)
+    }
+      
+    })
+    
+  })
+  
+}))
+
+```
+
+# Results across social scales and ranges
+
+Adjust alpha of 0.05 by a Bonferroni correction to account for multiple testing in this comparison between ranges.
+```{r echo = TRUE, eval = TRUE}
+
+# Original alpha 
+alpha <- 0.05
+
+mntl_indiv_df <- read.table(file.path(path, "Mantel_results_indiv_scale.txt"), sep = ",", header = TRUE)
+nrow(mntl_indiv_df) # 2 tests
+
+mntl_sites_df <- read.table(file.path(path, "Mantel_results_site_scale_spatial.txt"), sep = ",", header = TRUE)
+nrow(mntl_sites_df) # 12 tests
+
+# Adjust alpha by a Bonferroni correction using the number of comparisons at the individual and site scales
+adj_alpha <- round(alpha/(nrow(mntl_indiv_df) + nrow(mntl_sites_df)), digits = 4)
+adj_alpha # 0.0036
+
+# Individual scale results
+mntl_indiv_df %>%
+  dplyr::select(-c(permutations, partial_Mantel)) %>%
+  kable()
+
+# Site scale results
+mntl_sites_df %>%
+  dplyr::select(-c(permutations, partial_Mantel)) %>%
+  kable()
+
+```
+
+Individual scale p-values are significant for both ranges at the adjusted alpha. Some interesting site scale patterns. Most notably, the higher magnitude Mantel test statistic at the site scale for the introduced range with the full unfiltered call dataset. Mantel test statistics are lower for the introduced range for the two filtered datasets, regardless of the similarity method used.
+
+### Validation of retention of UM4 calls for native range site scale
+
+Mantel test for the native range site scale dataset with the UM4 calls. Here, I compared Mantel test statistics, not significance. I also ran a Mantel test with just SPCC similarity here.
+```{r echo = TRUE, eval = TRUE}
+
+# Read in the full extended selection table
+nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
+# glimpse(nat_int_est)
+
+# Get the calls that were inadvertently retained for NAT-UM4 at the site scale
+dropUM4 <- nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(Bird_ID == "NAT-UM4" & !grepl("site_scale", sound.files)) %>%
+  pull(sound.files)
+dropUM4
+
+# Site scale calls, full dataset with NAT-UM4 calls
+# Note that there are 602 calls here (610 in the extended selection table prior to dropping calls earlier in the script) because I added back one call each for a few more repeatedly sampled individuals in this work
+# Regardless, the results with these calls can be compared with the native range results for the native range full dataset to assess whether the 4 calls for UM4 change the Mantel test statistic
+site_scale_nf_natUM4 <- nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(range == "Native") %>%
+  droplevels()
+dim(site_scale_nf_natUM4)
+
+# Site scale calls, full dataset without NAT-UM4 calls (606 calls)
+site_scale_nf_nat <- site_scale_nf %>%
+  dplyr::filter(range == "Native") %>%
+  # Make sure to filter by calls in the filtered extended selection table
+  dplyr::filter(sound.files %in% nat_int_est$sound.files) %>% 
+  droplevels()
+dim(site_scale_nf_nat)
+
+# Checking, looks good
+site_scale_nf_natUM4 %>% 
+  dplyr::filter(sound.files %in% dropUM4) %>% 
+  pull(sound.files)
+
+site_scale_nf_nat %>% 
+  dplyr::filter(sound.files %in% dropUM4) %>% 
+  pull(sound.files)
+
+sim_meth <- c("SPCC", "RF")
+data_subset <- c("Full with UM4 calls", "Full without UM4 calls")
+
+mat_list <- list(xc_mat_spec, vp_prox_mat)
+df_list <- list(site_scale_nf_natUM4, site_scale_nf_nat)
+
+perms <- 9999
+  
+# j <- 1
+# z <- 2 # testing
+res_df <- rbindlist(pblapply(1:length(sim_meth), function(j){
+    
+  res_df2 <- rbindlist(lapply(1:length(data_subset), function(z){
+    
+    tmp_df <- df_list[[z]]
+    # glimpse(tmp_df)
+      
+    # Get calls
+    calls <- tmp_df %>%
+      pull(sound.files)
+    # head(calls, 25)
+    # length(calls)
+      
+    # Initialize the correct similarity matrix
+    sim_mat <- mat_list[[j]]
+      
+    # Subset the similarity matrix by the calls for the given range in the given dataset
+    sim_mat_tmp <- sim_mat[grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), dimnames(sim_mat)[[1]]), grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), dimnames(sim_mat)[[2]])]
+    # str(sim_mat_tmp)
+  
+    # Convert to distance matrix by subtracting from 1
+    # Convert to a dist object for the Mantel test
+    sim_mat_dist <- stats::as.dist(1 - sim_mat_tmp, diag = TRUE, upper = TRUE)
+    # str(sim_mat_dist)
+  
+    # Make a binary identity matrix for site-year identity
+    # Predictor matrix of site-year identity membership for Mantel tests
+    id_site_year <- unlist(lapply(1:nrow(tmp_df), function(y){
+      return(as.numeric(tmp_df$site_year[y] == tmp_df$site_year))
+    }))
+
+    # Convert the vector into a similarity matrix
+    id_mat <- matrix(id_site_year, nrow = nrow(tmp_df), ncol = nrow(tmp_df), dimnames = list(tmp_df$site_year, tmp_df$site_year))
+    # head(id_mat)
+    # str(id_mat)
+
+    # Convert to a binary distance matrix of site-year identity
+    id_mat_dist <- stats::as.dist(1 - id_mat, diag = TRUE, upper = TRUE)
+    # str(id_mat_dist)
+  
+    # Perform the Mantel test
+    mntl <- vegan::mantel(xdis = id_mat_dist, ydis = sim_mat_dist, method = "pearson", permutations = perms, parallel = cores)
+  
+    # Make a data frame summarizing the output
+    res_df <- data.frame(method = sim_meth[j], range = "Native", dataset = data_subset[z], num_calls = nrow(tmp_df), num_site_year = length(unique(tmp_df$site_year)), partial_Mantel = "N", mantel_r = round(mntl$statistic, digits = 4), mantel_p = mntl$signif, permutations = perms)
+    
+    return(res_df)
+      
+    }))
+    
+ return(res_df2)
+  
+}))
+
+res_df %>%
+  dplyr::select(-c(permutations, partial_Mantel)) %>%
+  kable()
+
+```
+
+Mantel test statistics were very similar with and without the UM4 calls for the native range out to 4 significant digits, and are the same when rounded to 2 digits (as reported in previous work<a href='#References'><sup>[1]</sup></a>). Therefore, the inclusion of these UM4 calls at the site scale in previous work did not influence the findings previously reported.
+
+# Mantel tests over time in the introduced range
+
+Initialize the 3 site scale datasets for temporal comparisons.
+```{r echo = TRUE, eval = FALSE}
+
+site_scale_nf_temp <- nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>%
+  # Filter by Austin and New Orleans calls
+  dplyr::filter(introduced_city %in% c("Austin", "New Orleans"))
+
+glimpse(site_scale_nf_temp)
+
+site_scale_cf_temp <- not_shiny_calls %>%
+  bind_rows(
+    nat_int_est %>%
+      filter(sound.files %in% cluster_calls$sound.files)
+  ) %>%
+  # Filter by Austin and New Orleans calls
+  filter(introduced_city %in% c("Austin", "New Orleans"))
+
+glimpse(site_scale_cf_temp)
+
+site_scale_vf_temp <- not_shiny_calls %>%
+  bind_rows(
+    nat_int_est %>%
+    filter(sound.files %in% observer_res_df_filt$sound.files)
+  ) %>%
+  # Filter by Austin and New Orleans calls
+  filter(introduced_city %in% c("Austin", "New Orleans"))
+
+glimpse(site_scale_vf_temp) 
+
+```
+
+Run the Mantel tests over similarity methods, years, introduced cities, datasets, to ask how similar calls were within versus among sites for the given year and city.
+```{r echo = TRUE, eval = FALSE}
+
+sim_meth <- c("SPCC", "Random forests")
+years <- c("2004", "2011", "2019")
+city <- c("Austin", "New Orleans")
+data_subset <- c("Full", "Clustering", "Visual inspection")
+
+mat_list <- list(xc_mat_spec, vp_prox_mat)
+
+df_list <- list(
+  site_scale_nf_temp,
+  site_scale_vf_temp, 
+  site_scale_cf_temp
+)
+
+perms <- 9999
+file_nm <- "Mantel_results_site_scale_temporal.txt"
+
+# A txt file will be populated by appending Mantel test results
+file.remove(file.path(path, file_nm)) # remove previous versions as needed
+ 
+# j <- 1
+# x <- 1
+# i <- 1
+# z <- 1 # testing
+invisible(pblapply(1:length(sim_meth), function(j){
+  
+  lapply(1:length(years), function(x){
+    
+    lapply(1:length(city), function(i){
+    
+      lapply(1:length(data_subset), function(z){
+    
+        # Get the right dataset and subset by the given year and city
+        tmp_df <- df_list[[z]] %>%
+          dplyr::filter(year == years[x]) %>%
+          dplyr::filter(introduced_city == city[i]) %>%
+          droplevels()
+        # glimpse(dats)
+      
+        # unique(tmp_df$introduced_city)
+        # unique(tmp_df$site_year)
+        
+        # Excludes New Orleans 2019, for which we do not have recordings
+        if(nrow(tmp_df) > 0){
+          
+          # Get calls for the given comparison
+          calls <- tmp_df %>%
+            pull(sound.files)
+          # head(calls, 25)
+      
+          # Initialize the correct similarity matrix
+          sim_mat <- mat_list[[j]]
+      
+          # Subset the similarity matrix by the calls for the given range in the given dataset
+          sim_mat_tmp <- sim_mat[grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), dimnames(sim_mat)[[1]]), grep(paste(paste("^", calls, "$", sep = ""), collapse = "|"), dimnames(sim_mat)[[2]])]
+  
+          # Convert to distance matrix by subtracting from 1
+          # Convert to a dist object for the Mantel test
+          sim_mat_dist <- stats::as.dist(1 - sim_mat_tmp, diag = TRUE, upper = TRUE)
+          # str(sim_mat_dist)
+  
+          # Make a binary identity matrix for site identity
+          id_site <- unlist(lapply(1:nrow(tmp_df), function(y){
+            return(as.numeric(tmp_df$site[y] == tmp_df$site))
+          }))
+
+          # Convert the vector into a similarity matrix
+          id_site_mat <- matrix(id_site, nrow = nrow(tmp_df), ncol = nrow(tmp_df), dimnames = list(tmp_df$site, tmp_df$site))
+          # head(id_site_mat)
+
+          # Convert to a binary distance matrix of site-year identity
+          id_site_mat_dist <- stats::as.dist(1 - id_site_mat, diag = TRUE, upper = TRUE)
+          # str(id_site_mat_dist)
+  
+          # Perform the partial Mantel test for the effect of year on call similarity while controlling for site identity
+          mntl <- vegan::mantel(xdis = id_site_mat_dist, ydis = sim_mat_dist, method = "pearson", permutations = perms, parallel = cores)
+  
+          # Make a data frame summarizing the output
+          res_df <- data.frame(method = sim_meth[j], year = years[x], city = city[i], dataset = data_subset[z], num_calls = nrow(tmp_df), num_sites = length(unique(tmp_df$site)), partial_Mantel = "N", mantel_r = round(mntl$statistic, digits = 2), mantel_p = mntl$signif, permutations = perms)
+  
+        # If on the first iteration, write a new file
+        if(j == 1 & x == 1 & i ==1 & z == 1){
+          write.table(res_df, file = file.path(path, file_nm), sep = ",", col.names = TRUE, quote = FALSE, row.names = FALSE)
+
+        # Append to the existing file in subsequent iterations
+        } else {
+          write.table(res_df, file = file.path(path, file_nm), sep = ",", col.names = FALSE, quote = FALSE, row.names = FALSE, append = TRUE)
+        }
+          
+        }
+      
+      })
+    
+    })
+    
+  })
+  
+}))
+
+```
+
+Adjust alpha of 0.05 by a Bonferroni correction to account for multiple tests over time.
+```{r echo = TRUE, eval = TRUE}
+
+# Original alpha 
+alpha <- 0.05
+
+mntl_temp_df <- read.table(file.path(path, "Mantel_results_site_scale_temporal.txt"), sep = ",", header = TRUE)
+nrow(mntl_temp_df) # 30 tests
+
+# Adjust alpha by a Bonferroni correction using the number of comparisons (one per year)
+adj_alpha <- round(alpha/nrow(mntl_temp_df), digits = 4)
+adj_alpha # 0.0017
+
+mntl_temp_df %>%
+  dplyr::select(-c(permutations, partial_Mantel)) %>%
+  # View()
+  kable()
+
+```
+
+# References
+
+    1. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
+    
+    2. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
+
+```{r echo = TRUE, eval = TRUE}
+
+sessionInfo()
+
+```

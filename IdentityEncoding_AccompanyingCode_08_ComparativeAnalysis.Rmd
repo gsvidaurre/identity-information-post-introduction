@@ -1,0 +1,1767 @@
+---
+title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 08:</center>
+subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Benchmarking Species Comparison</center>
+ &nbsp;
+author: |
+  <center style="font-style:normal;">
+  <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
+  &nbsp;
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
+  <br />
+  <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
+  &nbsp;
+date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
+  <br />
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+---
+
+<style type="text/css">
+
+a:hover {
+  color: #23527c !important;
+}
+
+h1.title {
+  font-size: 32px;
+  color: black;
+  font-weight: normal;
+}
+
+h1 {
+   color: black;
+   font-size: 26px;
+   font-weight: normal;
+}
+
+h2 {
+   color: black;
+   font-size: 24px;
+   font-weight: bold;
+}
+
+h3 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+h4 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+body{ /* Normal */
+      font-size: 18px;
+  }
+  
+code.r{ /* Code block */
+    font-size: 18px;
+}
+</style>
+
+```{r global options, include = FALSE}
+
+knitr::opts_knit$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+```
+
+We compared hierarchical mapping patterns between monk parakeets and yellow-naped amazons using a customized bootstrapping routine and SPCC similarity. See the methods and appendix of the associated publication for more information about these analyses.
+
+Check out Github repositories from previous work for related analyses and code:
+
+- [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
+
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[4]</sup></a>
+
+Please cite the associated papers and code (see DOIs on GitHub) if the code or analyses across these repositories are useful for your own research.
+```{r echo = TRUE, eval = TRUE, message = FALSE}
+
+rm(list = ls())
+
+X <- c("tidyverse", "warbleR", "pbapply", "plyr", "dplyr", "data.table", "parallel", "scales", "ggplot2", "knitr", "gridExtra", "grid", "Rmisc", "ggpubr")
+
+invisible(lapply(X, library, character.only = TRUE))
+
+# Suppress summarise warnings from dplyr
+options(dplyr.summarise.inform = FALSE)
+
+path <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Data"
+gpath <- "/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introduction/FIGURES"
+seed <- 401
+cores <- parallel::detectCores() - 2
+
+# Source customized functions:
+
+# Read in a function to extract unique pairwise comparisons from a symmetric similarity matrix
+source("/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction/functions/extract_simValues.R")
+
+```
+
+Read in extended selection table (EST). Metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales. 
+```{r echo = TRUE, eval = TRUE}
+
+nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
+glimpse(nat_int_est)
+
+```
+
+# Filtering out some calls
+
+I dropped individual scale calls that had been added to the site scale (1 call per known repeatedly sampled individual in the final individual scale dataset, suffix "site_scale").
+```{r chunk3}
+
+# 31 calls with the suffix "_site_scale". Not all of these belonged to the individuals in the final individual scale dataset, since some individuals that we repeatedly sampled were dropped due to low sample sizes after pre-processing
+nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>% 
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  pull(sound.files) %>%
+  length()
+
+# Get the "_site_scale" calls for the final dataset of known repeatedly sampled individuals
+indiv_ids <- nat_int_est %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  pull(Bird_ID) %>%
+  unique()
+
+# 17 total: 8 native and 9 introduced range
+indiv_ids
+
+# INT-UM1, INT-UM6, and INT-UM19 were each the sole bird sampled at sites BART, ASCA, and CAME, respectively. These sites were not included at the site scale, so these individuals did not have any "_site_scale" calls 
+# This leaves 14 calls to drop, each representing a call for a different repeatedly sampled individual included in the site scale dataset
+drop_is_calls <- nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  dplyr::filter(Bird_ID %in% indiv_ids) %>%
+  pull(sound.files)
+
+length(drop_is_calls)
+
+# Checking, looks good
+nat_int_est %>%
+  as_tibble() %>% 
+  dplyr::filter(sound.files %in% drop_is_calls) %>%
+  dplyr::select(sound.files, Bird_ID) %>%
+  kable(align = rep("c", nrow(.)))
+
+# Drop these calls from the extended selection table and continue with analyses
+# nat_int_est <- nat_int_est %>%
+  # dplyr::filter(!sound.files %in% drop_is_calls)
+
+# Don't use tidyverse since I want to filter both the data frame and the .wav objects in the EST
+nat_int_est <- nat_int_est[-grep(paste(paste("^", drop_is_calls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files), ]
+
+# 1582 calls remain out of the original 1596 calls read in above
+dim(nat_int_est)
+class(nat_int_est)
+
+```
+
+```{r}
+
+site_scale_nf <- readRDS(file.path(path, "site_scale_nf.RDS"))
+glimpse(site_scale_nf)
+
+site_scale_cf <- readRDS(file.path(path, "site_scale_cf.RDS"))
+glimpse(site_scale_cf)
+
+site_scale_vf <- readRDS(file.path(path, "site_scale_vf.RDS"))
+glimpse(site_scale_vf)
+
+```
+
+# SPCC for yellow-naped amazon calls
+
+For yellow-naped amazon calls, I obtained similarity within and among sites within the Northern dialect, as this dialect has differences among sites and has been shown to be relatively stable over time<a href='#References'><sup>[1]</sup></a><a href='#References'><sup>[2]</sup></a>. I also obtained similarity within and among sites between the Northern and Southern dialects, two previously described regional dialects in yellow-naped amazons. Since multiple calls were sampled per individual, I randomly sampled just one call per repeatedly sampled bird.
+
+Perform SPCC for the Northern dialect yellow-naped amazon calls. Note that these YNA calls are at a lower sampling rate than current monk calls. For another comparison of acoustic variation between species and similarity methodes, see previous work<a href='#References'><sup>[3]</sup></a>. Using the same window length for yellow-naped amazon and monk parakeet calls in SPCC.
+
+Make a selection table that has the starts and ends as the start and end of each cut.
+```{r echo = TRUE, eval = FALSE}
+
+yna_path <- "/media/gsvidaurre/MYIOPSITTA/R/Uruguay2017_MonkParakeet_CallAnalysis/Data/YNA_published_data"
+
+# Get the original .wav files
+wavs <- list.files(path = yna_path, pattern = "YNA_R_1994_([A-z]+)([a-z]+)_([a-z]+)_([0-9]+).([0-9]+).wav$")
+head(wavs)
+length(wavs)
+
+# Read in these original .wav files to make a new selection table
+# w <- 1 # testing
+yna_sels_df <- rbindlist(pblapply(1:length(wavs), function(w){
+  tmp <- readWave(file.path(yna_path, wavs[w]))
+  return(data.frame(sound.files = wavs[w], selec = 1, start = 0, end = duration(tmp), regional_dialect = strsplit(wavs[w], split = "_")[[1]][4], site = strsplit(wavs[w], split = "_")[[1]][5], bird_ID = paste(strsplit(wavs[w], split = "_")[[1]][5], gsub(".([0-9]+).wav", "", strsplit(wavs[w], split = "_")[[1]][6]), sep = "-"), sampling_rate = tmp@samp.rate))
+}))
+
+glimpse(yna_sels_df)
+
+# all .wav files at 22.050 kHz sampling rate
+unique(yna_sels_df$sampling_rate)
+
+write.csv(yna_sels_df, file.path(path, "Amazon_selection_table_1994calls.csv"), row.names = FALSE)
+
+# Perform SPCC as in previous analyses
+xc_mat_yna <- warbleR::cross_correlation(yna_sels_df, wl = 378, ovlp = 90, bp = c(0.5, 9), wn = "hanning", cor.method = "pearson", parallel = cores, na.rm = FALSE, type = "spectrogram", path = yna_path)
+
+glimpse(xc_mat_yna)
+
+# Change dimension names
+wavs <- gsub(".wav-1", ".wav", dimnames(xc_mat_yna)[[1]])
+head(wavs)
+
+dimnames(xc_mat_yna) <- list(wavs, wavs)
+str(xc_mat_yna)
+
+saveRDS(xc_mat_yna, file.path(path, "xc_mat_yna_1994calls.RDS"))
+
+```
+
+# SPCC for downsampled monk parakeet calls
+
+Downsampling the EST to 22.05 kHz to match yellow-naped amazon sampling rates. Downsample all 1582 calls per range.
+```{r echo = TRUE, echo = FALSE}
+
+nat_int_est_ds <- resample_est_waves(nat_int_est, samp.rate = 22.05, bit.depth = 16, avoid.clip = TRUE, pb = TRUE)
+glimpse(nat_int_est_ds)
+
+class(nat_int_est_ds)
+length(attr(nat_int_est_ds, "wave.objects"))
+
+saveRDS(nat_int_est_ds, file.path(path, "nat_int_est_ds.RDS"))
+
+```
+
+Reran SPCC with the downsampled monk parakeet calls.
+```{r echo = TRUE, eval = FALSE}
+
+nat_int_est_ds <- readRDS(file.path(path, "nat_int_est_ds.RDS"))
+glimpse(nat_int_est_ds)
+
+# Perform SPCC as in previous analyses
+xc_mat_mnk_ds <- warbleR::cross_correlation(nat_int_est_ds, wl = 378, ovlp = 90, wn = "hanning", cor.method = "pearson", parallel = cores, na.rm = FALSE, bp = c(0.5, 9), output = "cor.mat", path = path, type = "fourier")
+
+glimpse(xc_mat_mnk_ds)
+
+# Change dimension names
+wavs <- gsub(".WAV-1", ".WAV", dimnames(xc_mat_mnk_ds)[[1]])
+head(wavs)
+
+dimnames(xc_mat_mnk_ds) <- list(wavs, wavs)
+str(xc_mat_mnk_ds)
+
+saveRDS(xc_mat_mnk_ds, file.path(path, "xc_mat_mnk_ds.RDS"))
+
+```
+
+# Species comparison
+
+I performed a bootstrapping analysis to compare SPCC similarity within and among sites for monk parakeets to yellow-naped amazons (YNA), a species with well-documented convergence at the site scale, and regional dialects<a href='#References'><sup>[1]</sup></a>. For the monk parakeet data, I used all 3 site scale datasets, and performed bootstrapping for a comparison between ranges, as well as a comparison over time in the introduced range.
+
+I ran SPCC for yellow-naped amazons below. Monk parakeet site scale calls were downsampled to 22.05kHz to match the sampling rate for yellow-naped amazons, and I performed SPCC on the downsampled monk parakeet calls. 
+
+### Yellow-naped amazon SPCC similarity across 3 social scales
+
+```{r read in yellow-naped amazon data}
+
+yna_sels_df <- read.csv(file.path(path, "Amazon_selection_table_1994calls.csv"))
+glimpse(yna_sels_df)
+
+xc_mat_yna <- readRDS(file.path(path, "xc_mat_yna_1994calls.RDS"))
+glimpse(xc_mat_yna)
+
+```
+
+Make an acoustic space plot to be sure the SPCC values recapitulate the patterns we expect for amazons.
+```{r amazon acoustic space validation, eval = FALSE}
+
+# Convert to a distance matrix and dist object for isoMDS
+dist_mat <- stats::as.dist(1 - xc_mat_yna, diag = TRUE, upper = TRUE)
+# str(dist_mat)
+
+# Reduce dimensionality of the SPCC matrix to visualize calls in 2D acoustic space
+iso <- invisible(MASS::isoMDS(dist_mat, k = 15, maxit = 1000, trace = FALSE))
+# str(iso) # stress is shown as a percentage
+  
+# Make a data frame of the first two MDS dimensions and call metadata
+mds_df <- data.frame(sound.files = dimnames(iso$points)[[1]]) %>%
+  dplyr::mutate(
+    X = iso$points[, 1],
+    Y = iso$points[, 2]
+  ) %>%
+  inner_join(
+   yna_sels_df %>%
+     as_tibble() %>%
+     dplyr::select(sound.files, regional_dialect, site, bird_ID),
+   by = c("sound.files")
+  ) %>% 
+  dplyr::mutate(
+    regional_dialect = factor(regional_dialect, levels = c("Nor", "Nic", "Sou"))
+  )
+
+glimpse(mds_df)
+
+# Colors by dialect
+cols <- scales::alpha(c("navy", "gold", "firebrick"), 1)
+
+fills <- scales::alpha(c("navy", "gold", "firebrick"), 0.5)
+
+# Shapes by dialect
+shps <- c(21, 24, 25)
+
+x11()
+
+mds_df %>%
+  ggplot(aes(x = X, y = Y, shape = regional_dialect)) + 
+  geom_point(aes(fill = regional_dialect, color = regional_dialect), size = 1, stroke = 0.25) +
+  scale_shape_manual(values = shps) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = fills) +
+  xlab("MDS Dimension 1") + ylab("MDS Dimension 2") + 
+  guides(color = guide_legend(title = "Regional dialect", nrow = 1, byrow = TRUE), shape = guide_legend(title = "Regional dialect", nrow = 1, byrow = TRUE), fill = guide_legend(title = "Regional dialect", nrow = 1, byrow = TRUE)) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 12),
+    legend.justification = "center",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.ticks = element_line(size = 0.25),
+    legend.position = "top",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.box.margin = margin(3, -5, -7, -5), # top, right, bottom, left
+    legend.key.width = unit(0.5, "lines"),
+    legend.key.height = unit(0.5, "lines"),
+    plot.margin = margin(1, 3, 1, 1)
+  )
+
+ggsave(file.path(gpath, "amazon_validation_acousticSpace.tiff"), units = "in", width = 3.5, height = 3, dpi = 300)
+
+```
+
+Get all pairwise comparisons in the yellow-naped amazon SPCC matrix and visualize the full distribution of these values.
+```{r get pairwise comparisons for amazons}
+
+# Melt the pairwise symmetric matrix into a longer data frame such that each row is a pairwise comparison (upper and lower triangle comparisons are all here so comparisons are duplicated, diagonal is included)
+paircomp_yna_df <- reshape2::melt(xc_mat_yna, varnames = c("target_call", "other_call"), na.rm = TRUE)
+glimpse(paircomp_yna_df)
+
+# Mean of 0.72 for all SPCC values in the full matrix
+round(mean(paircomp_yna_df$value), 2)
+
+```
+
+```{r checking amazon values}
+
+x11()
+
+paircomp_yna_df %>%
+  ggplot() +
+  geom_density(aes(x = value), size = 0.5) +
+  ggtitle("") +
+  guides(fill = "none", color = "none") +
+  xlab("SPCC similarity values") +
+  ylab("Density") +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 7), breaks = seq(0, 7, 1), labels = seq(0, 7, 1)) +
+  theme_bw() +
+  theme(
+    plot.margin = ggplot2::margin(1, 1, 1, 1), # top, right, bottom, left
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    axis.ticks = element_line(size = 0.25)
+  )
+
+# ggsave(file.path(gpath, "amazon_allspcc_values_density.tiff"), units = "in", width = 3.5, height = 3, dpi = 300)
+
+```
+
+Get pairwise comparisons at the individual, site, and regional dialect social scales for yellow-naped amazon calls. I'm using the customized function I designed to extract similarity values (no values along the diagonal).
+
+Individual scale comparison: same or different individual, same site, same dialect
+```{r get SPCC values within and among groups across amazon social scales}
+
+# How many birds per Northern dialect site?
+# 2 - 4 birds
+yna_sels_df %>%
+  dplyr::filter(regional_dialect == "Nor") %>% 
+  group_by(site) %>%
+  dplyr::summarise(
+    n_birds = n_distinct(bird_ID)
+  )
+
+# Randomly select 3 North dialect sites for the individual scale, to match the maximum number of sites at which we repeatedly sampled monk parakeet individuals
+set.seed(seed)
+
+sites4indivs <- yna_sels_df %>%
+  dplyr::filter(regional_dialect == "Nor") %>% 
+  pull(site) %>% 
+  unique() %>% 
+  sample(., 3, replace = FALSE)
+
+# inoc, junq, pelal: all have 4 individuals, so the individual scale comparison will be performed with calls of 12 repeatedly sampled birds
+sites4indivs
+
+# Individual scale comparison: same or different individual, same site/dialect
+indiv_calls <- yna_sels_df %>% 
+  dplyr::filter(site %in% sites4indivs) %>% 
+  pull(sound.files)
+
+indiv_calls
+
+# Extract the similarity values for the pairwise comparisons of interest at this social scale
+indiv_comparisons_df <- extract_simValues(sim_mat = xc_mat_yna, calls = indiv_calls, species = "yellow-naped amazon", social_scale = "Individual", dataset = NA, similarity_method = "SPCC", city_year = NA, metadata_df = yna_sels_df)
+
+glimpse(indiv_comparisons_df)
+
+# Checking: the two comparison types are same individual/site/dialect versus different individual same site/dialect, looks good
+indiv_comparisons_df %>% 
+  distinct(indiv_comparison_type, site_comparison_type, dialect_comparison_type)
+
+indiv_comparisons_df %>% 
+  pull(target_bird_ID) %>% 
+  table()
+
+indiv_comparisons_df %>% 
+  pull(target_site) %>% 
+  table()
+
+indiv_comparisons_df %>% 
+  pull(target_dialect) %>% 
+  table()
+
+```
+
+Site scale comparison: different individuals, same or different site, same dialect
+```{r get SPCC values within and among groups across amazon social scales}
+
+# Get all calls for sites in the North dialect
+site_calls <- yna_sels_df %>% 
+  dplyr::filter(regional_dialect == "Nor") %>% 
+  pull(sound.files)
+
+site_calls
+
+# Extract the similarity values for the pairwise comparisons of interest at this social scale
+site_comparisons_df <- extract_simValues(sim_mat = xc_mat_yna, calls = site_calls, species = "yellow-naped amazon", social_scale = "Site", dataset = NA, similarity_method = "SPCC", city_year = NA, metadata_df = yna_sels_df)
+
+glimpse(site_comparisons_df)
+
+# Checking: the two comparison types are different individual same site/dialect versus different individual and different site same dialect, looks good
+site_comparisons_df %>% 
+  distinct(indiv_comparison_type, site_comparison_type, dialect_comparison_type)
+
+site_comparisons_df %>% 
+  pull(target_site) %>% 
+  table()
+
+site_comparisons_df %>% 
+  pull(target_dialect) %>% 
+  table()
+
+```
+
+Regional dialect scale comparison: different individuals, different sites, same or different dialects
+```{r get SPCC values within and among groups across amazon social scales}
+
+# Get all calls for sites in the North and South dialects
+dialect_calls <- yna_sels_df %>% 
+  dplyr::filter(grepl("Nor|Sou", regional_dialect)) %>% 
+  pull(sound.files)
+
+dialect_calls
+
+# Extract the similarity values for the pairwise comparisons of interest at this social scale
+dialect_comparisons_df <- extract_simValues(sim_mat = xc_mat_yna, calls = dialect_calls, species = "yellow-naped amazon", social_scale = "Regional Dialect", dataset = NA, similarity_method = "SPCC", city_year = NA, metadata_df = yna_sels_df)
+
+glimpse(dialect_comparisons_df)
+
+# Checking: the two comparison types are different individual same site/dialect versus different individual and different site same dialect, looks good
+dialect_comparisons_df %>% 
+  distinct(indiv_comparison_type, site_comparison_type, dialect_comparison_type)
+
+dialect_comparisons_df %>% 
+  pull(target_site) %>% 
+  table()
+
+dialect_comparisons_df %>% 
+  pull(target_dialect) %>% 
+  table()
+
+```
+
+Combine these pairwise comparisons into a single data frame for the bootstrapping analysis that follows. These similarity values represent unique pairwise comparisons among calls. 
+```{r}
+
+# Combine these data frames per social scale into a list to extract values in the loop below
+grps_dfs <- list(
+  
+  indiv_comparisons_df %>% 
+    dplyr::mutate(
+      target_grp_ids = target_bird_ID
+    ),
+  
+  site_comparisons_df  %>% 
+    dplyr::mutate(
+      target_grp_ids = target_site
+    ),
+  
+  dialect_comparisons_df  %>% 
+    dplyr::mutate(
+      target_grp_ids = target_dialect
+    )
+)
+
+glimpse(grps_dfs)
+
+```
+
+Extract SPCC values across these social scales and save to a .csv file to facilitate making a visual for the main manuscript. These values will be used for a visual of SPCC distributions within versus among categories (individuals or groups) at each social scale. 
+```{r}
+
+# Amazons: iterate over social scales
+social_scales <- c("Individual Scale", "Site Scale", "Regional Dialect Scale")
+social_scales
+
+# i <- 1
+# z <- 1 # testing
+yna_spcc_vals_df <- rbindlist(pblapply(1:length(social_scales), function(i){
+  
+  # Get the groups that will be used to pull out similarity values for the given social scale
+  tmp_df <- grps_dfs[[i]]
+  
+  ids <- tmp_df %>% 
+    pull(target_grp_ids) %>%
+    unique()
+
+  # Subset the data frame of pairwise comparisons for the given social scale
+  if(social_scales[i] == "Individual Scale"){
+    
+    id_col_nm <- "target_bird_ID"
+    comp_col_nm <- "indiv_comparison_type"
+    
+  } else if(social_scales[i] == "Site Scale"){
+    
+    id_col_nm <- "target_site"
+    comp_col_nm <- "site_comparison_type"
+    
+  } else if(social_scales[i] == "Regional Dialect Scale"){
+    
+    id_col_nm <- "target_dialect"
+    comp_col_nm <- "dialect_comparison_type"
+    
+  }
+  
+  # Iterate over the unique groups to pull out similarity values within versus among groups
+  res_df <- rbindlist(lapply(1:length(ids), function(z){
+    
+    id <- ids[z]
+    
+    # Get the values within the given group
+    tmp_df_w <- tmp_df %>%
+      dplyr::filter(!!rlang::sym(id_col_nm) == id) %>%
+      dplyr::filter(!!rlang::sym(comp_col_nm) == "same") %>% 
+      as_tibble()
+    
+    # Get the values among this group and others
+    # For the individual scale, this will be other individuals at the same site
+    # For the site scale, this will be other sites within the same dialect
+    tmp_df_a <- tmp_df %>%
+      dplyr::filter(!!rlang::sym(id_col_nm) == id) %>%
+      dplyr::filter(!!rlang::sym(comp_col_nm) == "different") %>% 
+      as_tibble()
+    
+    return(
+      tmp_df_w %>% 
+        bind_rows(
+          tmp_df_a
+        ) %>% 
+        dplyr::mutate(
+          spp = "Yellow-naped amazon", 
+          range = "Native", 
+          dataset = "", 
+          social_scale = social_scales[i], 
+          target_group = ids[z],
+          type = !!rlang::sym(comp_col_nm)
+        ) %>% 
+        dplyr::select(spp, range, dataset, social_scale, target_group, type, similarity_value) %>% 
+        as_tibble()
+    )
+    
+  }))
+  
+  return(res_df)
+  
+}))
+
+glimpse(yna_spcc_vals_df)
+
+write.csv(yna_spcc_vals_df, file.path(path, "amazon_spcc_social_scales.csv"), row.names = FALSE)
+  
+```
+
+Do the bootstrapping with the list of data frames generated above.
+
+  Individual Scale: Sample 5 same and 5 different comparisons among individuals from the same site
+  
+  Site Scale: Sample 5 same and 5 different comparisons among sites from the same regional dialect
+  
+  Regional Dialect Scale: Sample 5 same and 5 different comparisons between the Northern and Southern dialects
+  
+```{r bootstrapping within and among groups across amazon social scales}
+
+# Amazons: iterate over social scales
+social_scales <- c("Individual Scale", "Site Scale", "Regional Dialect Scale")
+social_scales
+
+iter <- 200
+n <- 5 # the number of comparisons that will be sampled with replacement
+
+# i <- 3
+# x <- 2
+# z <- 1 # testing
+yna_bs_sim_ratio_df <- rbindlist(pblapply(1:length(social_scales), function(i){
+  
+  # Get the groups that will be used to pull out similarity values for the given social scale
+  tmp_df <- grps_dfs[[i]]
+  
+  ids <- tmp_df %>% 
+    pull(target_grp_ids) %>%
+    unique()
+  
+  # Subset the data frame of pairwise comparisons for the given social scale
+  if(social_scales[i] == "Individual Scale"){
+    
+    id_col_nm <- "target_bird_ID"
+    comp_col_nm <- "indiv_comparison_type"
+    
+  } else if(social_scales[i] == "Site Scale"){
+    
+    id_col_nm <- "target_site"
+    comp_col_nm <- "site_comparison_type"
+    
+  } else if(social_scales[i] == "Regional Dialect Scale"){
+    
+    id_col_nm <- "target_dialect"
+    comp_col_nm <- "dialect_comparison_type"
+    
+  }
+  
+  # Per individual or group at the given social scale, randomly choose 5 values within and 5 values among categories with replacement for 200 iterations. So each individual or group should have 1000 representative similarity ratios
+  bs_df <- rbindlist(lapply(1:length(ids), function(x){
+    
+    id <- ids[x]
+    
+    bs_df2 <- rbindlist(lapply(1:iter, function(z){
+      
+      # Get pairwise comparisons within the given group     
+      w_df <- tmp_df %>%
+        dplyr::filter(!!rlang::sym(id_col_nm) == id) %>%
+        dplyr::filter(!!rlang::sym(comp_col_nm) == "same") %>% 
+        as_tibble()
+      
+      # Get pairwise comparisons among groups 
+      # Given the way that I wrote the customized function extract_sim_values(), there is only 1 set of pairwise "among" comparisons (since I dropped duplicated pairwise comparisons in that function) 
+      a_df <- tmp_df %>%
+        dplyr::filter(!!rlang::sym(comp_col_nm) == "different") %>% 
+        as_tibble()
+      
+      if(nrow(w_df) >= n & nrow(a_df) >= n){
+        
+         # Randomly sample n SPCC values with replacement that represent comparisons within the given group
+        w <- w_df %>%
+          pull(similarity_value) %>% 
+          sample(., n, replace = TRUE)
+        
+        # Randomly sample n SPCC values with replacement that represent comparisons among the given group and other groups
+        # For the individual scale, this will be other individuals at the same site
+        # For the site scale, this will be other sites within the same dialect
+        a <- a_df %>%
+          pull(similarity_value) %>% 
+          sample(., n, replace = TRUE)
+        
+        sim_ratios <- (w/a)
+        
+      } else {
+        
+        w <- a <- sim_ratios <- NA
+        
+      }
+      
+      bs_res <- data.frame(
+        spp = "Yellow-naped amazon", 
+        range = "Native", 
+        dataset = "", 
+        social_scale = social_scales[i], 
+        target_group = id,
+        bootstrapped_sim_ratios = sim_ratios,
+        bootstrap_iter = z
+      ) %>% 
+        dplyr::select(spp, range, dataset, social_scale, target_group, bootstrapped_sim_ratios, bootstrap_iter)
+      
+      return(bs_res)
+      
+    }))
+    
+    return(bs_df2)
+    
+  }))
+  
+  return(bs_df)
+  
+}))
+
+glimpse(yna_bs_sim_ratio_df)
+
+# Checking: No NAs
+any(is.na(yna_bs_sim_ratio_df$bootstrapped_sim_ratios))
+length(which(is.na(yna_bs_sim_ratio_df$bootstrapped_sim_ratios)))
+
+# Looks good, 1000 similarity ratios per category
+yna_bs_sim_ratio_df %>% 
+  group_by(social_scale, target_group) %>% 
+  dplyr::summarise(n = n()) %>% 
+  print(n = nrow(.))
+
+write.csv(yna_bs_sim_ratio_df, file.path(path, "amazon_spcc_social_scales_bootstrapped.csv"), row.names = FALSE)
+  
+```  
+
+## Monk parakeets
+
+```{r read in monk parakeet data}
+
+xc_mat_mnk_ds <- readRDS(file.path(path, "xc_mat_mnk_ds.RDS"))
+str(xc_mat_mnk_ds)
+
+```
+
+Check out the full distribution of SPCC values for all monk parakeet calls recorded in each of the native and introduced ranges. This distribution includes the diagonal and upper and lower triangles.
+```{r checking parakeet values}
+
+# Melt the pairwise symmetric matrix into a longer data frame such that each row is a pairwise comparison (upper and lower triangle comparisons are all here so comparisons are duplicated, diagonal is included)
+tmp_df <- reshape2::melt(xc_mat_mnk_ds, varnames = c("target_call", "other_call"), na.rm = TRUE) 
+
+paircomp_mnk_df <- tmp_df %>% 
+  # Add metadata for the target calls
+  inner_join(
+    nat_int_est %>% 
+      dplyr::filter(sound.files %in% tmp_df$target_call) %>%
+      as_tibble() %>% 
+      dplyr::select(sound.files, Bird_ID, site_year, range, social_scale),
+    by = c("target_call" = "sound.files")
+  ) %>% 
+  dplyr::rename(
+        `target_bird_ID` = "Bird_ID",
+        `target_site` = "site_year",
+        `target_range` = "range",
+        `target_comp_ss` = "social_scale"
+      ) %>% 
+      # Add metadata for the other calls used for comparison
+      inner_join(
+        nat_int_est %>% 
+          dplyr::filter(sound.files %in% tmp_df$other_call) %>%
+          as_tibble() %>%  
+          dplyr::select(sound.files, Bird_ID, site_year, range),
+        by = c("other_call" = "sound.files")
+      ) %>% 
+      dplyr::rename(
+        `other_bird_ID` = "Bird_ID",
+        `other_site` = "site_year",
+        `other_range` = "range"
+      )
+
+glimpse(paircomp_mnk_df)
+
+# Mean of 0.32 for all SPCC values in the full matrix
+round(mean(paircomp_mnk_df$value), 2)
+
+# Mean of 0.39 for the full set of native range values
+paircomp_mnk_df %>% 
+  dplyr::filter(target_range == "Native" & other_range == "Native") %>% 
+  pull(value) %>% 
+  mean() %>% 
+  round(., 2)
+
+# Mean of 0.3 for the full set of introduced range values
+paircomp_mnk_df %>% 
+  dplyr::filter(target_range == "Introduced" & other_range == "Introduced") %>% 
+  pull(value) %>% 
+  mean() %>% 
+  round(., 2)
+
+x11()
+
+paircomp_mnk_df %>% 
+  dplyr::filter(target_range == "Native" & other_range == "Native") %>%  
+  ggplot() +
+  geom_density(aes(x = value), size = 0.5) +
+  guides(fill = "none", color = "none") +
+  xlab("SPCC similarity values") +
+  ylab("Density") +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 7), breaks = seq(0, 7, 1), labels = seq(0, 7, 1)) +
+  theme_bw() +
+  theme(
+    plot.margin = ggplot2::margin(1, 1, 1, 1), # top, right, bottom, left
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    axis.ticks = element_line(size = 0.25)
+  )
+
+# ggsave(file.path(gpath, "nativeParakeet_allspcc_values_density.tiff"), units = "in", width = 3.5, height = 3, dpi = 300)
+
+
+paircomp_mnk_df %>% 
+  dplyr::filter(target_range == "Introduced" & other_range == "Introduced") %>% 
+  ggplot() +
+  geom_density(aes(x = value), size = 0.5) +
+  guides(fill = "none", color = "none") +
+  xlab("SPCC similarity values") +
+  ylab("Density") +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 7), breaks = seq(0, 7, 1), labels = seq(0, 7, 1)) +
+  theme_bw() +
+  theme(
+    plot.margin = ggplot2::margin(1, 1, 1, 1), # top, right, bottom, left
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 12),
+    axis.ticks = element_line(size = 0.25)
+  )
+
+# ggsave(file.path(gpath, "introducedParakeet_allspcc_values_density.tiff"), units = "in", width = 3.5, height = 3, dpi = 300)
+
+```
+
+Get similarity values for pairwise call comparisons at the individual and site scales for native and introduced range monk parakeets. At the site scale, I also need to repeat this process across datasets. I'm using the customized function I designed to extract similarity values (no values along the diagonal).
+
+For comparison among native and introduced range monk parakeets to yellow-naped amazons, I used the same 5 native range and 5 introduced range individuals for Mantel tests at the individual scale, sampled at a single site or 3 nearby sites (that I considered a single site for these analyses), respectively. I chose native range sites from the department of Colonia (native range, recorded in 2017) or the city of Austin (introduced range recorded in 2019), representing a geographic area similar to that of the Northern dialect region for yellow-naped amazons.
+
+Individual scale comparison: same or different individual, same site, same range
+```{monk parakeets, individual scale}
+
+# Monk parakeet individuals
+indivs <- nat_int_est %>%
+  as_tibble() %>% 
+  dplyr::filter(social_scale == "Individual") %>% 
+  dplyr::filter(grepl(c("1145_2017|SOCC_2019|ELEM_2019|INTR_2019"), site_year)) %>% 
+  pull(Bird_ID) %>% 
+  unique()
+
+indivs
+
+# Get the individual scale calls of interest
+indiv_calls <- nat_int_est %>%
+  as_tibble() %>% 
+  dplyr::filter(social_scale == "Individual") %>% 
+  dplyr::filter(Bird_ID %in% indivs) %>% 
+  pull(sound.files)
+  
+head(indiv_calls)
+length(indiv_calls)
+
+# For the purpose of these analyses, I considered the introduced range individuals as belonging to a single "site"
+# The object below is not an extended selection table anymore, and will just be used for metadata at the individual scale
+indiv_scale_meta_df <- nat_int_est %>% 
+  as_tibble() %>% 
+  dplyr::filter(social_scale == "Individual") %>% 
+  dplyr::mutate(site_year = gsub("SOCC_2019|ELEM_2019|INTR_2019", "Austin_IndivScale_2019", site_year))
+
+glimpse(indiv_scale_meta_df)
+
+indiv_scale_meta_df %>% 
+  pull(site_year) %>% 
+  table()
+
+# Extract the similarity values for the pairwise comparisons of interest at this social scale
+indiv_comparisons_df <- extract_simValues(sim_mat = xc_mat_mnk_ds, calls = indiv_calls, species = "monk parakeet", social_scale = "Individual", dataset = NA, similarity_method = "SPCC", city_year = NA, metadata_df = indiv_scale_meta_df, analysis_type = "bootstrap")
+
+glimpse(indiv_comparisons_df)
+
+# Checking: the two comparison types are same individual/site versus different individual same site, looks good
+indiv_comparisons_df %>% 
+  distinct(indiv_comparison_type, site_comparison_type)
+
+indiv_comparisons_df %>% 
+  pull(target_bird_ID) %>% 
+  table()
+
+indiv_comparisons_df %>% 
+  pull(target_site) %>% 
+  table()
+
+indiv_comparisons_df %>% 
+  pull(range) %>% 
+  table()
+
+```
+
+
+Site scale comparison: different individuals, same or different site, same range
+```{monk parakeets, site scale}
+
+# Monk parakeet sites
+nat_sites <- nat_int_est %>%
+  filter(dept_state == "Colonia") %>%
+  pull(site_year) %>%
+  unique() %>%
+  as.character()
+
+nat_sites
+length(nat_sites) # 16 sites
+
+# Randomly sample 6 of these to be on par with introduced range sites
+set.seed(seed)
+nat_sites <- sample(nat_sites, 6, replace = FALSE)
+
+nat_sites
+
+inv_sites <- nat_int_est %>%
+  filter(introduced_city == "Austin" & year == "2019") %>%
+  pull(site_year) %>%
+  unique() %>%
+  as.character()
+
+inv_sites
+length(inv_sites) # 6 sites
+
+site_calls <- nat_int_est %>%
+  as_tibble() %>% 
+  dplyr::filter(social_scale == "Site") %>% 
+  dplyr::filter(site_year %in% c(nat_sites, inv_sites)) %>% 
+  pull(sound.files)
+  
+head(site_calls)
+length(site_calls)
+
+# Extract the similarity values for the pairwise comparisons of interest at this social scale
+site_comparisons_df <- extract_simValues(sim_mat = xc_mat_mnk_ds, calls = site_calls, species = "monk parakeet", social_scale = "Site", dataset = "Full", similarity_method = "SPCC", city_year = NA, metadata_df = nat_int_est, analysis_type = "bootstrap")
+
+glimpse(site_comparisons_df)
+
+unique(site_comparisons_df$social_scale)
+
+# Checking: the two comparison types are NA or different individual/ same site versus NA or different individual / different site, looks good. The NAs in the individuals comparison type column reflect the fact that most site scale calls have no individual identities associated with them
+site_comparisons_df %>% 
+  distinct(indiv_comparison_type, site_comparison_type)
+
+site_comparisons_df %>% 
+  pull(target_site) %>% 
+  table()
+
+site_comparisons_df %>% 
+  pull(range) %>% 
+  table()
+
+```
+
+Combine these pairwise comparisons for monk parakeet calls into a single data frame for the bootstrapping analysis that follows. These similarity values represent unique pairwise comparisons among calls. 
+```{r}
+
+# Combine these data frames per social scale into a list to extract values in the loop below
+grps_dfs <- list(
+  
+  indiv_comparisons_df %>% 
+    dplyr::mutate(
+      target_grp_ids = target_bird_ID
+    ),
+  
+  site_comparisons_df  %>% 
+    dplyr::mutate(
+      target_grp_ids = target_site
+    )
+)
+
+glimpse(grps_dfs)
+
+```
+
+Extract SPCC values for monk parakeets over social scales, ranges, and for the site social scale, datasets as well. These SPCC values are saved in a .csv to facilitate making visuals later on.
+```{r get SPCC values within and among groups across monk parakeet social scales}
+
+# Parakeets: iterate over social scales, ranges, and site scale datasets
+social_scales <- c("Individual Scale", "Site Scale")
+ranges <- c("Native", "Introduced")
+# Initialize datsets by social scale
+datasets <- list("Full", list("Full", "Clustering", "Visual classification"))
+
+# x <- 1
+# j <- 2
+# i <- 1
+# z <- 1 # testing
+mnk_spcc_vals_df <- rbindlist(pblapply(1:length(social_scales), function(x){
+  
+  # If on the individual scale, iterate over ranges
+  if(social_scales[x] == "Individual Scale"){
+    
+    res_df2 <- rbindlist(lapply(1:length(ranges), function(j){
+      
+      # Get the groups that will be used to pull out similarity values for the given social scale and range
+      tmp_df <- grps_dfs[[x]] %>% 
+        dplyr::filter(range == ranges[j] & other_range == ranges[j])
+      
+      ids <- tmp_df %>% 
+        pull(target_grp_ids) %>%
+        unique()
+      
+      # Subset the data frame of pairwise comparisons for the given social scale
+      # For the individual scale, make sure to drop all pairwise comparisons that should only be used for the site scale, and only use comparisons within the same range
+      id_col_nm <- "target_bird_ID"
+      comp_col_nm <- "indiv_comparison_type"
+      
+      # Iterate over the unique groups to pull out similarity values within versus among groups
+      res_df <- rbindlist(lapply(1:length(ids), function(z){
+        
+        id <- ids[z]
+        
+        # Get the values within the given group
+        tmp_df_w <- tmp_df %>%
+          dplyr::filter(!!rlang::sym(id_col_nm) == id) %>%
+          dplyr::filter(!!rlang::sym(comp_col_nm) == "same") %>%
+          as_tibble()
+        
+        # nrow(tmp_df_w)
+        
+        # Get the values among this group and others
+        # For the individual scale, this will be other individuals at the same site
+        # For the site scale, this will be other sites within the same range
+        # Given the way that I wrote the customized function extract_sim_values(), there is only 1 set of pairwise "among" comparisons (since I dropped duplicated pairwise comparisons in that function) 
+        tmp_df_a <- tmp_df %>%
+          dplyr::filter(!!rlang::sym(comp_col_nm) == "different") %>%
+          as_tibble()
+        # nrow(tmp_df_a)
+        
+        return(
+          tmp_df_w %>% 
+            bind_rows(
+              tmp_df_a
+            ) %>% 
+            dplyr::mutate(
+              spp = "Monk parakeet", 
+              social_scale = social_scales[x], 
+              range = ranges[j], 
+              dataset = "",
+              target_group = ids[z],
+              type = !!rlang::sym(comp_col_nm)
+            ) %>% 
+            dplyr::select(spp, range, dataset, social_scale, target_group, type, similarity_value) %>% 
+            as_tibble()
+        )
+        
+      }))
+      
+      return(res_df)
+      
+    }))
+  
+  # If on the site scale, iterate over site scale datasets as well
+  } else if(social_scales[x] == "Site Scale"){
+    
+    res_df2 <- rbindlist(lapply(1:length(ranges), function(j){
+      
+      ds_df <- rbindlist(lapply(1:length(datasets[[x]]), function(i){
+        
+        # Get the groups that will be used to pull out similarity values for the given social scale and range
+        tmp_df <- grps_dfs[[x]] %>% 
+          dplyr::filter(range == ranges[j] & other_range == ranges[j])
+        
+        ids <- tmp_df %>% 
+          pull(target_grp_ids) %>%
+          unique()
+        
+        if(datasets[[x]][[i]] == "Clustering"){
+          
+          tmp_df <- tmp_df %>% 
+            dplyr::filter(target_call %in% unique(site_scale_cf$sound.files)) %>% 
+            dplyr::filter(other_call %in% unique(site_scale_cf$sound.files))
+          # nrow(tmp_df)
+          
+        } else if(datasets[[x]][[i]] == "Visual classification"){
+          
+          tmp_df <- tmp_df %>% 
+            dplyr::filter(target_call %in% unique(site_scale_vf$sound.files)) %>% 
+            dplyr::filter(other_call %in% unique(site_scale_vf$sound.files))
+          # nrow(tmp_df)
+          
+        }
+        
+        id_col_nm <- "target_site"
+        comp_col_nm <- "site_comparison_type"
+        
+        
+        # Iterate over the unique groups to pull out similarity values within versus among groups
+        res_df <- rbindlist(lapply(1:length(ids), function(z){
+          
+          id <- ids[z]
+          
+          # Get the values within the given group
+          tmp_df_w <- tmp_df %>%
+            dplyr::filter(!!rlang::sym(id_col_nm) == id) %>%
+            dplyr::filter(!!rlang::sym(comp_col_nm) == "same") %>%
+            as_tibble()
+          
+          # nrow(tmp_df_w)
+          
+          # Get the values among this group and others
+          # For the individual scale, this will be other individuals at the same site
+          # For the site scale, this will be other sites within the same range
+          # Given the way that I wrote the customized function extract_sim_values(), there is only 1 set of pairwise "among" comparisons (since I dropped duplicated pairwise comparisons in that function) 
+          tmp_df_a <- tmp_df %>%
+            dplyr::filter(!!rlang::sym(comp_col_nm) == "different") %>% 
+            as_tibble()
+          
+          # nrow(tmp_df_a)
+          
+          return(
+            tmp_df_w %>% 
+              bind_rows(
+                tmp_df_a
+              ) %>% 
+              dplyr::mutate(
+                spp = "Monk parakeet", 
+                social_scale = social_scales[x], 
+                range = ranges[j], 
+                dataset = datasets[[x]][[i]],
+                target_group = ids[z],
+                type = !!rlang::sym(comp_col_nm)
+              ) %>% 
+              dplyr::select(spp, range, dataset, social_scale, target_group, type, similarity_value) %>% 
+              as_tibble()
+          )
+          
+        }))
+        
+        return(res_df)
+        
+      }))
+      
+      return(ds_df)
+      
+    }))
+    
+  }
+  
+  return(res_df2)
+  
+}))
+
+glimpse(mnk_spcc_vals_df)
+
+write.csv(mnk_spcc_vals_df, file.path(path, "parakeet_spcc_social_scales.csv"), row.names = FALSE)
+
+```
+
+In order to compare results for native and introduced range monk parakeets to yellow-naped amazons, I performed bootstrapping of SPCC similarity values in a way as similar as possible to the yellow-naped amazon bootstrapping routine at the site scale. Over 1000 bootstrapping iterations, I randomly sampled 5 sites with replacement. For each of these 5 randomly sampled sites in each iteration, I randomly sampled 4 calls without replacement, or took all calls if the given site-year had 4 calls or less for the given dataset. This mimicked the sampling of one call per 2-4 unique individuals without replacement for yellow-naped amazons, as we considered each call in the monk parakeet site scale dataset a "unique" individual. This bootstrapping was performed over ranges and datasets, and the ratio of mean site scale similarity within compared to among sites was obtained per iteration.
+
+For monk parakeets in each range:
+
+  Individual Scale: Sample 5 same and 5 different comparisons among individuals at the same site (3 introduced range sites were collapsed into a single site, see above)
+  
+  Site Scale: Sample 5 same and 5 different comparisons among sites after randomly sampling sites as described above
+  
+```{r monk parakeet bootstrapping}
+
+# Parakeets: iterate over social scales, ranges, and site scale datasets
+social_scales <- c("Individual Scale", "Site Scale")
+ranges <- c("Native", "Introduced")
+# Initialize datsets by social scale
+datasets <- list("Full", list("Full", "Clustering", "Visual classification"))
+
+iter <- 200
+n <- 5
+
+# x <- 2
+# j <- 2
+# y <- 1
+# i <- 1
+# z <- 1 # testing
+mnk_bs_sim_ratio_df <- rbindlist(pblapply(1:length(social_scales), function(x){
+  
+  # If on the individual scale, iterate over ranges
+  if(social_scales[x] == "Individual Scale"){
+    
+    res_df2 <- rbindlist(lapply(1:length(ranges), function(j){
+      
+      # Get the groups that will be used to pull out similarity values for the given social scale and range
+      tmp_df <- grps_dfs[[x]] %>% 
+        dplyr::filter(range == ranges[j] & other_range == ranges[j])
+      
+      ids <- tmp_df %>% 
+        pull(target_grp_ids) %>%
+        unique()
+      
+      # Subset the data frame of pairwise comparisons for the given social scale
+      # For the individual scale, make sure to drop all pairwise comparisons that should only be used for the site scale, and only use comparisons within the same range
+      id_col_nm <- "target_bird_ID"
+      comp_col_nm <- "indiv_comparison_type"
+      
+      # Bootstrapping iterations: randomly select one group at the given social scale (no replacement since only a single group chosen), then randomly select comparisons within and among groups with replacement
+      # Per individual or group at the given social scale, randomly choose 5 values within and 5 values among categories with replacement for 200 iterations. So each individual or group should have 1000 representative similarity ratios
+      bs_df <- rbindlist(lapply(1:length(ids), function(y){
+        
+        id <- ids[y]
+        
+        bs_df2 <- rbindlist(lapply(1:iter, function(z){
+          
+          # Get comparisons within the given group
+          w_df <- tmp_df %>%
+            dplyr::filter(!!rlang::sym(id_col_nm) == id) %>%
+            dplyr::filter(!!rlang::sym(comp_col_nm) == "same") %>% 
+            as_tibble()
+          
+          # Get comparisons among the given group and others
+          # For the individual scale, this will be other individuals at the same site
+          # For the site scale, this will be other sites within the same dialect
+          # Given the way that I wrote the customized function extract_sim_values(), there is only 1 set of pairwise "among" comparisons (since I dropped duplicated pairwise comparisons in that function)
+          a_df <- tmp_df %>%
+            dplyr::filter(!!rlang::sym(comp_col_nm) == "different") %>% 
+            as_tibble()
+          
+          # nrow(w_df)
+          # nrow(a_df)
+          
+          # Randomly sample n SPCC values with replacement that represent comparisons within the given group
+          # Also randomly sample n SPCC values with replacement that represent comparisons among the given group and other groups
+          if(nrow(w_df) >= n & nrow(a_df) >= n){
+            
+            w <- w_df %>%
+              pull(similarity_value) %>% 
+              sample(., n, replace = TRUE)
+            
+            a <- a_df %>%
+              pull(similarity_value) %>% 
+              sample(., n, replace = TRUE)
+            
+            sim_ratios <- (w/a)
+            
+          } else {
+            
+            w <- a <- sim_ratios <- NA
+            
+          }
+          
+          bs_res <- data.frame(
+            spp = "Monk parakeet", 
+            range = ranges[j], 
+            dataset = "", 
+            social_scale = social_scales[x], 
+            target_group = id,
+            bootstrapped_sim_ratios = sim_ratios,
+            bootstrap_iter = z
+          ) %>% 
+            dplyr::select(spp, range, dataset, social_scale, target_group, bootstrapped_sim_ratios, bootstrap_iter) %>% 
+            as_tibble()
+          
+          return(bs_res)
+          
+        }))
+        
+        return(bs_df2)
+        
+      }))
+      
+      return(bs_df)
+      
+    }))
+    
+    # If on the site scale, iterate over site scale datasets as well
+  } else if(social_scales[x] == "Site Scale"){
+    
+    res_df2 <- rbindlist(lapply(1:length(ranges), function(j){
+      
+      # Get the groups that will be used to pull out similarity values for the given social scale and range
+      tmp_df <- grps_dfs[[x]] %>% 
+        dplyr::filter(range == ranges[j] & other_range == ranges[j])
+      
+      ids <- tmp_df %>% 
+        pull(target_grp_ids) %>%
+        unique()
+      
+      ds_df <- rbindlist(lapply(1:length(datasets[[x]]), function(i){
+        
+        if(datasets[[x]][[i]] == "Clustering"){
+          
+          tmp_df <- tmp_df %>% 
+            dplyr::filter(target_call %in% unique(site_scale_cf$sound.files)) %>% 
+            dplyr::filter(other_call %in% unique(site_scale_cf$sound.files))
+          # nrow(tmp_df)
+          
+        } else if(datasets[[x]][[i]] == "Visual classification"){
+          
+          tmp_df <- tmp_df %>% 
+            dplyr::filter(target_call %in% unique(site_scale_vf$sound.files)) %>% 
+            dplyr::filter(other_call %in% unique(site_scale_vf$sound.files))
+          # nrow(tmp_df)
+          
+        }
+        
+        id_col_nm <- "target_site"
+        comp_col_nm <- "site_comparison_type"
+        
+        # Bootstrapping iterations: randomly select one group at the given social scale (no replacement since only a single group chosen), then randomly select comparisons within and among groups with replacement
+        bs_df <- rbindlist(lapply(1:length(ids), function(y){
+          
+          id <- ids[y]
+          
+          bs_df2 <- rbindlist(lapply(1:iter, function(z){
+            
+            # Get comparisons within the given group
+            w_df <- tmp_df %>%
+              dplyr::filter(!!rlang::sym(id_col_nm) == id) %>%
+              dplyr::filter(!!rlang::sym(comp_col_nm) == "same") %>% 
+              as_tibble()
+            
+            # Get comparisons among the given group and others
+            # For the individual scale, this will be other individuals at the same site
+            # For the site scale, this will be other sites within the same dialect
+            # Given the way that I wrote the customized function extract_sim_values(), there is only 1 set of pairwise "among" comparisons (since I dropped duplicated pairwise comparisons in that function)
+            a_df <- tmp_df %>%
+              dplyr::filter(!!rlang::sym(comp_col_nm) == "different") %>% 
+              as_tibble()
+            
+            # Randomly sample n SPCC values with replacement that represent comparisons within the given group
+            # Also randomly sample n SPCC values with replacement that represent comparisons among the given group and other groups
+            if(nrow(w_df) >= n & nrow(a_df) >= n){
+              
+              w <- w_df %>%
+                pull(similarity_value) %>% 
+                sample(., n, replace = TRUE)
+              
+              a <- a_df %>%
+                pull(similarity_value) %>% 
+                sample(., n, replace = TRUE)
+              
+              sim_ratios <- (w/a)
+              
+            } else {
+              
+              w <- a <- sim_ratios <- NA
+              
+            }
+            
+            bs_res <- data.frame(
+              spp = "Monk parakeet", 
+              range = ranges[j], 
+              dataset = datasets[[x]][[i]], 
+              social_scale = social_scales[x], 
+              target_group = id,
+              bootstrapped_sim_ratios = sim_ratios,
+              bootstrap_iter = z
+            ) %>% 
+              dplyr::select(spp, range, dataset, social_scale, target_group, bootstrapped_sim_ratios, bootstrap_iter) %>% 
+              as_tibble()
+            
+            return(bs_res)
+            
+          }))
+          
+          return(bs_df2)
+          
+        }))
+        
+        return(bs_df)
+        
+      }))
+      
+      return(ds_df)
+      
+    }))
+    
+    return(res_df2)
+    
+  }
+  
+}))
+    
+glimpse(mnk_bs_sim_ratio_df)
+
+# Checking. There are NAs, as expected
+any(is.na(mnk_bs_sim_ratio_df$bootstrapped_sim_ratios))
+length(which(is.na(mnk_bs_sim_ratio_df$bootstrapped_sim_ratios)))
+
+# All the NAs (200 only) that occurred were for the introduced range site MANO 2019 for the visual classification datasets, meaning that for this site there were no bootstrapped similarity ratios because 5 similarity values within the site weren't available in this dataset
+mnk_bs_sim_ratio_df %>% 
+  dplyr::filter(is.na(bootstrapped_sim_ratios)) %>%
+  group_by(range, dataset, social_scale, target_group) %>%
+  dplyr::summarise(n = n()) 
+
+# Looks good, 1000 similarity ratios for each category except site MANO in the visual classification dataset
+mnk_bs_sim_ratio_df %>% 
+  group_by(social_scale, dataset, target_group) %>% 
+  dplyr::summarise(n = n()) %>% 
+  print(n = nrow(.))
+
+write.csv(mnk_bs_sim_ratio_df, file.path(path, "parakeet_spcc_social_scales_bootstrapped.csv"), row.names = FALSE)
+  
+```  
+  
+I did not perform these analyses for random forests similarity because due to the manner in which models were built for previous work with yellow-naped amazons (unpublished), only 2 sites were used for random forests validation and 2 sites for prediction.
+
+## Summarize bootstrapped data
+
+```{r read in spcc values and bootstrapped data}
+
+yna_spcc_vals_df <- read.csv(file.path(path, "amazon_spcc_social_scales.csv"))
+glimpse(yna_spcc_vals_df)
+
+yna_bs_sim_ratio_df <- read.csv(file.path(path, "amazon_spcc_social_scales_bootstrapped.csv"))
+glimpse(yna_bs_sim_ratio_df)
+
+mnk_spcc_vals_df <- read.csv(file.path(path, "parakeet_spcc_social_scales.csv"))
+glimpse(mnk_spcc_vals_df)
+
+mnk_bs_sim_ratio_df <- read.csv(file.path(path, "parakeet_spcc_social_scales_bootstrapped.csv"))
+glimpse(mnk_bs_sim_ratio_df)
+
+```
+
+```{r check out bootstrapped statistics}
+
+x11()
+
+yna_bs_sim_ratio_df %>% 
+  bind_rows(mnk_bs_sim_ratio_df) %>% 
+  dplyr::mutate(
+    social_scale = factor(social_scale, levels = c("Individual Scale", "Site Scale", "Regional Dialect Scale"))
+  ) %>% 
+  ggplot(aes(x = bootstrapped_sim_ratios)) +
+  facet_grid(cols = vars(range, spp), rows = vars(social_scale), scales = "fixed") +
+  geom_histogram(binwidth = 0.01) +
+  scale_x_continuous(limits = c(0, 2)) +
+  xlab("") +
+  ylab("Bootstrapped similarity ratios") +
+  theme_bw() +
+  theme(
+    plot.margin = ggplot2::margin(0, 0, -5, 0), # top, right, bottom, left
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    strip.text.y = element_text(size = 9, margin = ggplot2::margin(0.25, 0.25, 0.25, 0.25, "lines")),
+    strip.text.x = element_text(size = 10, margin = ggplot2::margin(0.15, 0.15, 0.15, 0.15, "lines")),
+    strip.background.y = element_rect(size = 0.25, color = "black", fill = "grey93"),
+    strip.background.x = element_rect(size = 0.25, color = "black", fill = "grey93"),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    axis.title = element_text(size = 9),
+    axis.ticks = element_line(size = 0.25)
+  )
+
+```
+
+Make the visual between species. These are kernel density curves (the default is a Gaussian kernel). Also see ?bandwidth: the default bandwidth is chosen using the bw.nrd0() rule-of-thumb in geom_density().
+```{r visual of spcc distributions}
+
+# Combine data between species and plot density curves of SPCC distributions
+# Full dataset only for parakeet site scale
+gg_df <- yna_spcc_vals_df %>%
+  bind_rows(
+    mnk_spcc_vals_df %>% 
+      dplyr::filter(dataset == "Full" | dataset == "")
+  ) %>% 
+  dplyr::mutate(
+    spp = gsub("Monk parakeet", "monk parakeet", spp),
+    range = ifelse(spp == "Yellow-naped amazon", "", range),
+    range_spp = paste(range, spp, sep = " "),
+    range_spp = ifelse(spp == "Yellow-naped amazon", "Yellow-naped amazon", range_spp),
+    range_spp = factor(range_spp, levels = c("Native monk parakeet", "Introduced monk parakeet", "Yellow-naped amazon")),
+    spp = factor(spp, levels = c("monk parakeet", "Yellow-naped amazon")),
+    social_scale = gsub("Scale", "scale", social_scale),
+    social_scale = gsub("Regional Dialect", "Regional dialect\n", social_scale),
+    social_scale = factor(social_scale, levels = c("Individual scale", "Site scale", "Regional dialect\n scale")),
+    type = gsub("dif", "Dif", type),
+    type = gsub("sam", "Sam", type),
+    type = factor(type, levels = c("Same", "Different", "original SPCC"))
+  ) 
+
+glimpse(gg_df)
+
+unique(gg_df$range_spp)
+unique(gg_df$type)
+
+# Make a data frame of median values per similarity type across species and social scales
+medians_df <- gg_df %>% 
+  group_by(spp, range_spp, social_scale, type) %>% 
+  dplyr::summarise(
+    median_val = median(similarity_value)
+  ) %>% 
+  ungroup() %>% 
+  # Add a column that will be used to delineate the maximum height of each mean line per species
+  dplyr::mutate(
+    y_lim = ifelse(spp == "monk parakeet", 6, 11.5)
+  )
+
+medians_df
+
+# Make a data frame based on the medians to add a bar above each pair of distributions that shows the separation between these
+sep_bars_df <- gg_df %>% 
+  group_by(spp, range_spp, social_scale, type) %>% 
+  dplyr::summarise(
+    median_val = median(similarity_value)
+  ) %>% 
+  ungroup() %>% 
+  pivot_wider(
+    names_from = "type",
+    values_from = "median_val"
+  ) %>% 
+  # Add a column that will be used to delineate the maximum height of each mean line per species
+  dplyr::mutate(
+    y_lim = ifelse(spp == "Monk parakeet", 7, 12.5)
+  )
+
+glimpse(sep_bars_df)
+
+# Fills and colors by type of similarity (different or same group per social scale)
+# fills <- c(alpha("firebrick3", 0.45), alpha("navy", 0.35))
+# cols <- c("firebrick3", "navy")
+
+fills <- c(alpha("firebrick", 0.55), alpha("turquoise4", 0.55))
+cols <- c("firebrick", "turquoise4")
+
+x11()
+
+gg_df %>%
+  ggplot() +
+  # facet_grid(cols = vars(range_spp), rows = vars(social_scale), scales = "free") +
+  facet_wrap(vars(social_scale, range_spp), scales = "free", strip.position = c("top")) +
+  geom_density(aes(x = similarity_value, fill = type, color = type), size = 0.25, bw = "nrd0") +
+  # Add lines for medians per distribution
+  geom_segment(data = medians_df, aes(x = median_val, xend = median_val, y = 0, yend = y_lim, color = type), linetype = "dashed", size = 0.50) +
+  # Add a bar above the distributions showing the separation between the two
+  geom_segment(data = sep_bars_df, aes(x = Same, xend = Different, y = y_lim, yend = y_lim), color = "black", linetype = "solid", size = 2.50) +
+  scale_y_continuous(limits = c(0, 13), breaks = seq(0, 13, 2), labels = seq(0, 13, 2)) +
+  scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.25), labels = seq(0, 1, 0.25)) +
+  scale_fill_manual(values = fills) +
+  scale_color_manual(values = cols) +
+  guides(fill = "none", color = "none") +
+  xlab("") +
+  ylab("") +
+  theme_bw() +
+  theme(
+    plot.margin = ggplot2::margin(0, 0, -5, 0), # top, right, bottom, left
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # strip.text.y = element_text(size = 9, margin = ggplot2::margin(0.25, 0.25, 0.25, 0.25, "lines")),
+    strip.text.x = element_text(size = 11, margin = ggplot2::margin(0.1, 0.1, 0.1, 0.1, "lines")),
+    strip.background.y = element_rect(size = 0.25, color = "black", fill = "grey93"),
+    strip.background.x = element_rect(size = 0.25, color = "black", fill = "grey93"),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title = element_text(size = 10),
+    axis.ticks = element_line(size = 0.25)
+  )
+
+ggsave(file.path(gpath, "species_comparison_benchmarking.tiff"), units = "in", width = 7.48, height = 6.5, dpi = 300)
+
+```
+
+Combine bootstrapping results.
+```{r echo = TRUE, echo = TRUE}
+
+yna_sim_rat <- yna_bs_sim_ratio_df %>%
+  dplyr::filter(!is.na(bootstrapped_sim_ratios)) %>% 
+  group_by(spp, range, social_scale) %>%
+  # Get the overall mean and CI of the bootstrapped similarity ratios
+  dplyr::summarise(
+    mean_sim_ratio = mean(bootstrapped_sim_ratios),
+    sd_vals = sd(bootstrapped_sim_ratios)
+    # upper_CI = Rmisc::CI(bootstrapped_sim_ratios, ci = 0.95)[1],
+    # lower_CI = Rmisc::CI(bootstrapped_sim_ratios, ci = 0.95)[3]
+  ) %>%
+  ungroup() %>%
+  dplyr::mutate(
+    dataset = "Full"
+  ) %>%
+  dplyr::select(spp, dataset, range, social_scale, mean_sim_ratio, sd_vals)
+
+glimpse(yna_sim_rat)
+
+mnk_sim_rat <- mnk_bs_sim_ratio_df %>%
+  dplyr::filter(!is.na(bootstrapped_sim_ratios)) %>% 
+# Get the overall mean and CI of the bootstrapped similarity ratios
+  group_by(spp, dataset, range, social_scale) %>%
+  dplyr::summarise(
+    mean_sim_ratio = mean(bootstrapped_sim_ratios),
+    sd_vals = sd(bootstrapped_sim_ratios)
+    # upper_CI = Rmisc::CI(bootstrapped_sim_ratios, ci = 0.95)[1],
+    # lower_CI = Rmisc::CI(bootstrapped_sim_ratios, ci = 0.95)[3]
+  ) %>%
+  ungroup() %>%
+  dplyr::select(spp, dataset, range, social_scale, mean_sim_ratio, sd_vals)
+
+
+glimpse(mnk_sim_rat)
+# mnk_sim_rat
+
+# Combine summary statistics of bootstrapping results
+comb_vals <- yna_sim_rat %>%
+  bind_rows(
+    mnk_sim_rat 
+  ) %>%
+  dplyr::mutate(
+    mean_sim_ratio = round(mean_sim_ratio, 3),
+    sd_vals = round(sd_vals, 3)
+    # lower_CI = round(lower_CI, 3),
+    # upper_CI = round(upper_CI, 3)
+  ) %>%
+  arrange(desc(range))
+
+comb_vals %>%
+  kable()
+
+```
+
+Make a plot of the bootstrapped statistics.
+```{r}
+
+x11()
+
+gg_bs_df <- comb_vals %>% 
+  dplyr::filter(dataset == "Full" | dataset == "") %>%
+  dplyr::mutate(
+    mean_sim_ratio = round(mean_sim_ratio, 2),
+    sd_vals = round(sd_vals, 2)
+  ) %>% 
+  dplyr::mutate(
+    spp = gsub("Monk parakeet", "monk parakeet", spp),
+    range = ifelse(spp == "Yellow-naped amazon", "", range),
+    range_spp = paste(range, spp, sep = " "),
+    range_spp = ifelse(spp == "Yellow-naped amazon", "Yellow-naped amazon", range_spp),
+    range_spp = factor(range_spp, levels = c("Native monk parakeet", "Introduced monk parakeet", "Yellow-naped amazon")),
+    social_scale = gsub(" Scale", " scale", social_scale),
+    social_scale = gsub("Dialect", "dialect", social_scale),
+    social_scale = factor(social_scale, levels = c("Individual scale", "Site scale", "Regional dialect scale")),
+    strength = paste(spp, social_scale, sep = "-"),
+    strength = factor(strength, levels = c("monk parakeet-Individual scale", "monk parakeet-Site scale", "Yellow-naped amazon-Individual scale", "Yellow-naped amazon-Site scale", "Yellow-naped amazon-Regional dialect scale"))
+  )
+
+glimpse(gg_bs_df)
+# gg_bs_df
+
+unique(gg_bs_df$range_spp)
+levels(gg_bs_df$social_scale)
+unique(gg_bs_df$social_scale)
+levels(gg_bs_df$strength)
+
+# Set point colors by range-species-social scale to show the scales with the strongest convergence. See the order of the levels of the "strength" column
+fills <- c("firebrick", "white")
+cols <- c("firebrick", "black")
+
+# Add a color gradient to the plot background
+# g <- rasterGrob(gray.colors(12)[7], width = unit(1, "npc"), height = unit(1, "npc"), interpolate = FALSE)
+
+# grid.draw(g1) # checking, looks good
+
+x11()
+
+gg_bs_df %>%
+  dplyr::filter(spp == "monk parakeet") %>% 
+  ggplot() +
+  facet_grid(cols = vars(range_spp), scales = "fixed", drop = TRUE) +
+    # facet_wrap(vars(range_spp), scales = "fixed", drop = TRUE) +
+  # Add the gradient background
+  # Strong convergence at 1 and onwards
+  # annotation_custom(g, xmin = -Inf, xmax = Inf, ymin = 1, ymax = Inf) +
+  # geom_errorbar(aes(x = social_scale, ymin = mean_sim_ratio - sd_vals, ymax = mean_sim_ratio + sd_vals), color = "black", size = 0.25, width = 0.001) +
+  geom_point(aes(x = social_scale, y = mean_sim_ratio, color = strength, fill = strength), shape = 21, size = 2.75) +
+  geom_hline(aes(yintercept = 1), color = "black", linetype = "solid", size = 0.25) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = fills) +
+  scale_y_continuous(limits = c(0.8, 1.6), breaks = seq(0.8, 1.6, 0.2), labels = sprintf("%.1f", seq(0.8, 1.6, 0.2))) +
+  guides(fill = "none", color = "none") +
+  xlab("") +
+  ylab("") +
+  theme_bw() +
+  theme(
+    plot.margin = ggplot2::margin(0, 2, -5, -12), # top, right, bottom, left
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # strip.text.y = element_text(size = 8, margin = ggplot2::margin(0.25, 0.25, 0.25, 0.25, "lines")),
+    strip.text.x = element_text(size = 11, margin = ggplot2::margin(0.2, 0.2, 0.2, 0.2, "lines")),
+    strip.background.y = element_rect(size = 0.25, color = "black", fill = "grey93"),
+    strip.background.x = element_rect(size = 0.25, color = "black", fill = "grey93"),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.ticks = element_line(size = 0.25)
+  )
+
+ggsave(file.path(gpath, "species_comparison_parakeet_benchmarking_bootstrapping.tiff"), units = "in", width = 5, height = 1.65, dpi = 300)
+
+
+fills <- c("white", "white", "firebrick")
+cols <- c("black", "black", "firebrick")
+
+gg_bs_df %>%
+  dplyr::filter(spp == "Yellow-naped amazon") %>% 
+  dplyr::mutate(
+    social_scale = gsub(" scale", "\n scale", social_scale),
+    social_scale = factor(social_scale, levels = c("Individual\n scale", "Site\n scale", "Regional dialect\n scale"))
+  ) %>% 
+  dplyr::mutate(
+    strength = paste(spp, social_scale, sep = "-"),
+    strength = factor(strength, levels = c("Yellow-naped amazon-Individual\n scale", "Yellow-naped amazon-Site\n scale", "Yellow-naped amazon-Regional dialect\n scale"))
+  ) %>% 
+  ggplot() +
+  facet_grid(cols = vars(range_spp), scales = "fixed", drop = TRUE) +
+  # Add the gradient background
+  # Stronger convergence 1 and onwards
+  # annotation_custom(g, xmin = -Inf, xmax = Inf, ymin = 1, ymax = Inf) +
+  # geom_errorbar(aes(x = social_scale, ymin = mean_sim_ratio - sd_vals, ymax = mean_sim_ratio + sd_vals), color = "black", size = 0.25, width = 0.001) +
+  geom_point(aes(x = social_scale, y = mean_sim_ratio, color = strength, fill = strength), shape = 21, size = 2.75) +
+  geom_hline(aes(yintercept = 1), color = "black", linetype = "solid", size = 0.2) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = fills) +
+  scale_y_continuous(limits = c(0.8, 1.6), breaks = seq(0.8, 1.6, 0.2), labels = sprintf("%.1f", seq(0.8, 1.6, 0.2))) +
+  guides(fill = "none", color = "none") +
+  xlab("") +
+  ylab("") +
+  theme_bw() +
+  theme(
+    plot.margin = ggplot2::margin(0, 2, -5, -12), # top, right, bottom, left
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # strip.text.y = element_text(size = 8, margin = ggplot2::margin(0.25, 0.25, 0.25, 0.25, "lines")),
+     strip.text.x = element_text(size = 11, margin = ggplot2::margin(0.2, 0.2, 0.2, 0.2, "lines")),
+    strip.background.y = element_rect(size = 0.25, color = "black", fill = "grey93"),
+    strip.background.x = element_rect(size = 0.25, color = "black", fill = "grey93"),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.ticks = element_line(size = 0.2)
+  )
+
+ggsave(file.path(gpath, "species_comparison_amazon_benchmarking_bootstrapping.tiff"), units = "in", width = 2.85, height = 1.77, dpi = 300)
+
+```
+
+# References
+
+    1. Wright, T. F. (1996). Regional dialects in the contact call of a parrot. Proceedings of the Royal Society of London, B, 263, 867–872. https://doi.org/10.1098/rspb.1996.0128
+    
+    2. Wright, T. F., Dahlin, C. R., & Salinas-Melgoza, A. (2008). Stability and change in vocal dialects of the yellow-naped amazon. Animal Behavior, 76(3), 1017–1027. https://doi.org/10.1016/j.anbehav.2008.03.025
+    
+    3. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
+    
+    
+```{r chunk19}
+
+sessionInfo()
+
+```

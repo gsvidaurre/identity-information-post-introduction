@@ -1,0 +1,1018 @@
+---
+title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 05:</center>
+subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Generating Site Scale Datasets</center>
+ &nbsp;
+author: |
+  <center style="font-style:normal;">
+  <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
+  &nbsp;
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
+  <br />
+  <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
+  &nbsp;
+date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
+  <br />
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+---
+
+<style type="text/css">
+
+a:hover {
+  color: #23527c !important;
+}
+
+h1.title {
+  font-size: 32px;
+  color: black;
+  font-weight: normal;
+}
+
+h1 {
+   color: black;
+   font-size: 26px;
+   font-weight: normal;
+}
+
+h2 {
+   color: black;
+   font-size: 24px;
+   font-weight: bold;
+}
+
+h3 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+h4 {
+   color: black;
+   font-size: 20px;
+   font-weight: normal;
+}
+
+body{ /* Normal */
+      font-size: 18px;
+  }
+  
+code.r{ /* Code block */
+    font-size: 18px;
+}
+</style>
+
+```{r global options, include = FALSE}
+
+knitr::opts_knit$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+```
+
+Here I generated 3 versions of the site scale dataset to account for repeated sampling of unmarked individuals at this social scale. These datasets include: no filtering (full dataset), filtering by Gaussian mixture models, and filtering by visual classification. We also include summary statistics about geographic distances among sites used for subsequent analyses in the native and introduced ranges, as well as geographic distances among introduced range sites used to quantify site scale convergence over sampling years. See the methods and supplement of the associated publication for more information about these analyses.
+
+Check out Github repositories from previous work for related analyses and code:
+
+- [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
+
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[4]</sup></a>
+
+Please cite the associated papers as well as our code (see DOIs on GitHub) if the code or analyses across these repositories useful for your own research.
+```{r echo = TRUE, eval = TRUE, message = FALSE}
+
+rm(list = ls())
+
+X <- c("tidyverse", "pbapply", "plyr", "dplyr", "data.table", "parallel", "knitr", "rlist", "sp", "rgdal")
+
+invisible(lapply(X, library, character.only = TRUE))
+
+# Suppress summarise warnings from dplyr
+options(dplyr.summarise.inform = FALSE)
+
+path <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Data"
+seed <- 401
+cores <- parallel::detectCores() - 2
+
+```
+
+Read in extended selection table (EST). Metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales. 
+```{r echo = TRUE, eval = TRUE}
+
+nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
+glimpse(nat_int_est)
+
+```
+
+# Filtering out some calls
+
+I dropped individual scale calls that had been added to the site scale (1 call per known repeatedly sampled individual in the final individual scale dataset, suffix "site_scale").
+```{r chunk3}
+
+# 31 calls with the suffix "_site_scale". Not all of these belonged to the individuals in the final individual scale dataset, since some individuals that we repeatedly sampled were dropped due to low sample sizes after pre-processing
+nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>% 
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  pull(sound.files) %>%
+  length()
+
+# Get the "_site_scale" calls for the final dataset of known repeatedly sampled individuals
+indiv_ids <- nat_int_est %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  pull(Bird_ID) %>%
+  unique()
+
+# 17 total: 8 native and 9 introduced range
+indiv_ids
+
+# INT-UM1, INT-UM6, and INT-UM19 were each the sole bird sampled at sites BART, ASCA, and CAME, respectively. These sites were not included at the site scale, so these individuals did not have any "_site_scale" calls 
+# This leaves 14 calls to drop, each representing a call for a different repeatedly sampled individual included in the site scale dataset
+drop_is_calls <- nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(grepl("_site_scale", sound.files)) %>%
+  dplyr::filter(Bird_ID %in% indiv_ids) %>%
+  pull(sound.files)
+
+length(drop_is_calls)
+
+# Checking, looks good
+nat_int_est %>%
+  as_tibble() %>% 
+  dplyr::filter(sound.files %in% drop_is_calls) %>%
+  dplyr::select(sound.files, Bird_ID) %>%
+  kable(align = rep("c", nrow(.)))
+
+# Drop these calls from the extended selection table and continue with analyses
+# nat_int_est <- nat_int_est %>%
+  # dplyr::filter(!sound.files %in% drop_is_calls)
+
+# Don't use tidyverse since I want to filter both the data frame and the .wav objects in the EST
+nat_int_est <- nat_int_est[-grep(paste(paste("^", drop_is_calls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files), ]
+
+# 1582 calls remain out of the original 1596 calls read in above
+dim(nat_int_est)
+class(nat_int_est)
+
+```
+
+### Comparison between ranges
+
+We will use the three site-scale datasets and both similarity methods in subsequent analyses. For comparisons between the native and introduced ranges, we retained calls recorded in the cities of Austin and New Orleans in more recent sampling years. Austin and New Orleans calls from earlier sampling years were used in analyses compare site scale convergence over time (see below).
+
+```{r echo = TRUE, eval = TRUE}
+
+# Austin site-years to drop (representing earlier sampling years)
+aust2drop <- nat_int_est %>%
+  as_tibble() %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(range == "Introduced" & introduced_city == "Austin") %>%
+  group_by(site) %>%
+  dplyr::summarise(
+    n_years = n_distinct(year)
+  ) %>%
+  dplyr::filter(n_years > 1) %>%
+  dplyr::select(-c(n_years)) %>%
+  inner_join(
+    nat_int_est %>%
+      as_tibble() %>%
+      dplyr::filter(social_scale == "Site") %>%
+      dplyr::filter(range == "Introduced" & introduced_city == "Austin") %>%
+      dplyr::select(site, year),
+    by = "site"
+  ) %>%
+  group_by(site) %>%
+  dplyr::summarise(
+    earlier_year = min(year)
+  ) %>%
+  dplyr::mutate(
+    site_year = paste(site, earlier_year, sep = "_")
+  ) %>%
+  pull(site_year)
+  
+# New Orleans sites to drop (representing earlier sampling years)
+norl2drop <- nat_int_est %>%
+  as_tibble() %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(range == "Introduced" & introduced_city == "New Orleans") %>%
+  dplyr::summarise(
+    earlier_year = min(year)
+  ) %>%
+  inner_join(
+    nat_int_est %>%
+      as_tibble() %>%
+      dplyr::filter(social_scale == "Site") %>%
+      dplyr::filter(range == "Introduced" & introduced_city == "New Orleans") %>%
+      dplyr::select(site, year),
+    by = c("earlier_year" = "year")
+  ) %>%
+  dplyr::mutate(
+    site_year = paste(site, earlier_year, sep = "_")
+  ) %>%
+  pull(site_year) %>%
+  unique()
+  
+
+aust2drop 
+norl2drop
+
+```
+
+Also initialize the 4 UM4 calls inadvertently retained at the site scale in previous work.
+```{r echo = TRUE, eval = TRUE}
+
+dropUM4 <- nat_int_est %>%
+  filter(social_scale == "Site") %>%
+  filter(Bird_ID == "NAT-UM4" & !grepl("site_scale", sound.files)) %>%
+  pull(sound.files)
+
+dropUM4
+
+```
+
+The first dataset can be obtained by getting all site-scale calls (no filtering on site-scale calls).
+```{r echo = TRUE, eval = FALSE}
+
+site_scale_nf <- nat_int_est %>%
+  filter(social_scale == "Site") %>%
+  # Drop Austin and New Orleans calls from earlier sampling years
+  filter(!site_year %in% c(aust2drop, norl2drop)) %>%
+  # Drop the 4 UM4 calls inadvertently retained at the site scale in previous work
+  filter(!sound.files %in% dropUM4)
+
+# glimpse(site_scale_nf)
+
+saveRDS(site_scale_nf, file.path(path, "site_scale_nf.RDS"))
+
+```
+
+The second dataset needs filtering by the SPCC threshold, then clustering to identify potential repeated individuals, then random sampling of 1 call per potential individual.
+
+Use the EST generated post-SPCC threshold and clustering to find the calls that never went into the app. These calls that didn't go into the app and the randomly sampled visual inpsection calls will be retained for the second dataset.
+```{r echo = TRUE, eval = FALSE}
+
+shiny_calls <- readRDS("/home/gsvidaurre/Desktop/GitHub_repos/vocal-learning-invasion/pot-rep-indiv-filter/shiny_potrepindiv_testing_module_est.RDS")
+
+not_shiny_calls <- nat_int_est %>%
+  as_tibble() %>%
+  filter(social_scale == "Site") %>%
+  filter(!sound.files %in% shiny_calls$sound.files) %>%
+  droplevels()
+
+glimpse(not_shiny_calls)
+
+```
+
+```{r echo = TRUE, eval = FALSE}
+
+# Among the calls use for Shiny, randomly sample one call per cluster (which in the app, were presented as potential individuals)
+
+site_year <- unique(shiny_calls$site_year)
+site_year
+
+# Iterate over site-years and clusters to randomly sample a call per cluster
+# x <- 2
+cluster_calls <- rbindlist(pblapply(1:length(site_year), function(x){
+  
+  tmp_df <- shiny_calls[grep(site_year[x], shiny_calls$site_year), ]
+  
+  # Initialize the number of clusters identified for this site-year
+  # Clusters with only a single call will be treated as a "unique" individual, so no random sampling
+  clusters <- unique(as.numeric(tmp_df$cluster))
+  # clusters
+  
+  # Iterate over clusters to determine whether to randomly sample or not
+  # i <- 1
+  res_df <- rbindlist(lapply(1:length(clusters), function(i){
+    
+    calls <- tmp_df %>%
+      filter(cluster == clusters[i]) %>%
+      pull(sound.files)
+    
+    if(length(calls) == 1){
+      calls2 <- calls
+    } else if(length(calls) > 1){
+      set.seed(seed)
+      calls2 <- sample(calls, 1, replace = FALSE)
+    }
+    
+    return(data.frame(site_year = site_year[x], cluster = clusters[i], sound.files = calls2))
+    
+  }))
+  
+  return(res_df)
+  
+}))
+
+glimpse(cluster_calls)
+# View(cluster_calls)
+
+```
+
+Combine calls that never went into the app with calls that were set aside for the app. For the latter, we randomly sampled 1 call per cluster with more than one call.
+```{r echo = TRUE, eval = FALSE}
+
+site_scale_cf <- not_shiny_calls %>%
+  bind_rows(
+    nat_int_est %>%
+      filter(sound.files %in% cluster_calls$sound.files)
+  ) %>%
+  # Drop Austin and New Orleans calls from earlier sampling years
+  filter(!site_year %in% c(aust2drop, norl2drop)) %>%
+  # Drop the 4 UM4 calls inadvertently retained at the site scale in previous work
+  filter(!sound.files %in% dropUM4)
+
+glimpse(site_scale_cf)
+
+saveRDS(site_scale_cf, file.path(path, "site_scale_cf.RDS"))
+
+```
+
+The third dataset must be generated using multiobserver results from the Shiny for visual inspection. Find unique potential repeated individuals that have more than one call.
+```{r echo = TRUE, eval = FALSE}
+
+file_nms <- list.files(pattern = ".json$", path)
+file_nms
+
+observers <- sapply(1:length(file_nms), function(i){
+  strsplit(file_nms[i], split = "-")[[1]][1]
+})
+observers
+
+# x <- 1
+# i <- 12
+# z <- 1
+observer_res_df <- rbindlist(pblapply(1:length(observers), function(x){
+  
+  res <- list.load(file.path(path, file_nms[x]))
+  # str(res)
+  
+  sy <- names(res[["Testing"]])
+
+  # i <- 1
+  res_df <- rbindlist(lapply(1:length(sy), function(i){
+    
+    # Bind list objects together into a wide data frame
+    tmp_df <- do.call("cbind.data.frame", res[["Testing"]][[sy[i]]][[1]])
+    # glimpse(tmp_df)
+    
+    # Convert to long format to facilitate combining results across observers
+    tmp_df2 <- tmp_df %>%
+      pivot_longer(cols = names(tmp_df)[grep("class_0|Potential_Individual", names(tmp_df))], names_to = "Class", values_to = "Call_image_files") %>%
+      dplyr::mutate(
+        Call_image_files = as.character(Call_image_files)
+      )
+
+    # Iterate over potential repeated individuals and randomly select one call to be retained in analyses per each
+    # z <- 1
+    tmp_df3 <- rbindlist(lapply(1:nrow(tmp_df2), function(z){
+      
+      # Extract the individual filenames, remove the "-1.jpeg" suffix for grepping in EST later
+      calls <- gsub("-1.jpeg$", "", strsplit(tmp_df2$Call_image_files[z], split = ";")[[1]])
+      # calls
+      
+      # Only randomly sample one call if the class is a potential repeated individual
+      if(tmp_df2$Class[z] != "class_0" & length(calls) > 1){
+        set.seed(seed)
+        calls2 <- sample(calls, 1, replace = FALSE)
+      # If the class if class_0, or an individual with only a single call, keep all calls
+      } else if(tmp_df2$Class[z] == "class_0" | length(calls) == 1){
+        calls2 <- calls
+      }
+      
+      # Return a data frame that has one row per call
+      return(data.frame(observer = tmp_df2$login_username[z], site_year = tmp_df2$page[z], Class = tmp_df2$Class[z], sound.files = calls2))
+      
+    }))
+  
+    return(tmp_df3)
+    
+  }))  
+  
+  which(is.na(res_df$observer))
+  
+  return(res_df)
+  
+}))
+
+glimpse(observer_res_df)
+
+```
+
+Concatenate calls that went through visual inspection and are being retained with the calls that never went into the app.
+
+Which sites were assessed by multiple observers?
+```{r echo = TRUE, eval = FALSE}
+
+mo_sites <- observer_res_df %>%
+  group_by(site_year) %>%
+  dplyr::summarise(
+    n_observers = n_distinct(observer)
+  ) %>%
+  filter(n_observers > 1) %>%
+  pull(site_year)
+  
+```
+
+For each of these sites, retain data from one randomly selected observer.
+```{r echo = TRUE, eval = FALSE}
+
+set.seed(seed)
+
+retain_obs <- observer_res_df %>%
+  filter(site_year %in% mo_sites) %>%
+  # dplyr::select(observer, site_year) %>%
+  group_by(observer, site_year) %>%
+  dplyr::summarise(n_calls = length(sound.files)) %>%
+  pivot_wider(
+    names_from = "observer",
+    values_from = "n_calls"
+  ) %>%
+  group_by(site_year) %>%
+  dplyr::mutate(
+    retain_observer = sample(names(.)[-grep("site_year", names(.))], 1, replace = FALSE)
+  ) %>%
+  ungroup() %>%
+  dplyr::select(site_year, retain_observer)
+  
+retain_obs
+
+# Subset the multiobserver data for these site-years for the users chosen above
+observer_res_df_filt <- retain_obs %>%
+  inner_join(
+    observer_res_df %>%
+      filter(site_year %in% mo_sites),
+    by = c("site_year", "retain_observer" = "observer")
+  ) %>%
+  dplyr::rename(
+    observer = retain_observer
+  ) %>%
+  dplyr::select(observer, site_year, Class, sound.files) %>%
+  bind_rows(
+    observer_res_df %>%
+      filter(!site_year %in% mo_sites) %>%
+      droplevels()
+  )
+glimpse(observer_res_df_filt)
+
+# 277 rows droppped, which represented calls from duplicated site-years assessed by different observers
+nrow(observer_res_df) - nrow(observer_res_df_filt)
+
+```
+
+```{r echo = TRUE, eval = FALSE}
+
+site_scale_vf <- not_shiny_calls %>%
+  bind_rows(
+    nat_int_est %>%
+    dplyr::filter(sound.files %in% observer_res_df_filt$sound.files)
+  ) %>%
+  # Drop Austin and New Orleans calls from earlier sampling years
+  dplyr::filter(!site_year %in% c(aust2drop, norl2drop)) %>%
+  # Drop the 4 UM4 calls inadvertently retained at the site scale in previous work
+  dplyr::filter(!sound.files %in% dropUM4) %>%
+  droplevels()
+
+glimpse(site_scale_vf) 
+
+# Write out this EST in order to make figures later as needed
+saveRDS(site_scale_vf, file.path(path, "site_scale_vf.RDS"))
+
+```
+
+## Summary statistics
+
+Check out numbers of calls per site_year across these 3 datasets.
+```{r echo = TRUE, eval = TRUE}
+
+site_scale_nf <- readRDS(file.path(path, "site_scale_nf.RDS"))
+site_scale_cf <- readRDS(file.path(path, "site_scale_cf.RDS"))
+site_scale_vf <- readRDS(file.path(path, "site_scale_vf.RDS"))
+
+# Full site scale dataset
+# 1177 calls
+site_scale_nf %>%
+  nrow()
+
+site_scale_nf %>%
+  dplyr::filter(range == "Introduced") %>% 
+  pull(site_year) %>% 
+  unique()
+
+# Site scale dataset that went through SPCC threshold and clustering
+# 515 calls
+site_scale_cf %>%
+  nrow()
+
+# Site scale dataset that went through SPCC threshold, clustering and visual inspection
+# 618 calls
+site_scale_vf %>%
+  nrow()
+
+```
+
+Which site_years across these 3 datasets had 6 calls or less?
+```{r echo = TRUE, eval = TRUE}
+
+# Full site scale dataset
+site_scale_nf %>%
+  group_by(site_year) %>%
+ dplyr::summarise(n_calls = length(sound.files)) %>%
+  filter(n_calls <= 6)
+
+# Site scale dataset that went through SPCC threshold and clustering
+# More sites with less than 5 calls, but no site-years with 3 or less
+site_scale_cf %>%
+  group_by(site_year) %>%
+ dplyr::summarise(n_calls = length(sound.files)) %>%
+  filter(n_calls <= 6)
+
+# Site scale dataset that went through SPCC threshold, clustering and visual inspection
+# A few sites have less than 5 calls now (3 or 4)
+site_scale_vf %>%
+  group_by(site_year) %>%
+ dplyr::summarise(n_calls = length(sound.files)) %>%
+  filter(n_calls <= 6)
+
+```
+
+How many site-years represented per dataset? 55 site-years in each, for the comparison of site scale convergence between ranges. 
+```{r echo = TRUE, eval = TRUE}
+
+# Full site scale dataset
+site_scale_nf %>%
+ dplyr::summarise(n_site_year = n_distinct(site_year))
+
+# Site scale dataset that went through SPCC threshold and clustering
+site_scale_cf %>%
+ dplyr::summarise(n_site_year = n_distinct(site_year))
+
+# Site scale dataset that went through SPCC threshold, clustering and visual inspection
+site_scale_vf %>%
+ dplyr::summarise(n_site_year = n_distinct(site_year))
+
+```
+
+We decided to keep all site-years regardless of sample size, since only 2 sites for the visual inspection dataset had 3 calls.
+
+Checking the earliest sampling year represented in these datasets. When an introduced range site was sampled in multiple years, we should have retained only the calls from the most recent sampling year for the comparison of site scale convergence between ranges.
+```{r}
+
+site_scale_nf %>%
+  dplyr::filter(range == "Introduced") %>% 
+  group_by(dept_state, site_year) %>% 
+  dplyr::summarise(min_year = min(year))
+
+site_scale_vf %>%
+  dplyr::filter(range == "Introduced") %>% 
+  group_by(dept_state, site_year) %>% 
+  dplyr::summarise(min_year = min(year))
+
+site_scale_cf %>%
+  dplyr::filter(range == "Introduced") %>% 
+  group_by(dept_state, site_year) %>% 
+  dplyr::summarise(min_year = min(year))
+
+```
+
+# Geographic distance among sites
+
+Pairwise geographic distances among sites in each range for the sites used in analyses comparing convergence between ranges.
+
+Native range, using spatial projection for Uruguay.
+```{r echo = TRUE, eval = TRUE}
+
+# Access EPSG codes to reproject in meters
+# Used EPSG 5383 for Uruguay
+epsg <- rgdal::make_EPSG()
+# str(epsg)
+
+# epsg[grep("^5383$", epsg$code), ]
+
+# Get geographic coordinates for native range sites at which we repeatedly sampled individuals
+# Note that there were two clusters of nests at which we recorded at site 1145, considered a single site because we frequently observed birds from these clusters of nests staging and interacting together
+# coords_df <- nat_int_est %>%
+#   as_tibble() %>%
+#   filter(range == "Native" & social_scale == "Site") %>%
+#   dplyr::select(site, lat, lon) %>%
+#   distinct()
+
+coords_df <- site_scale_nf %>% 
+  as_tibble() %>% 
+  dplyr::filter(range == "Native") %>% 
+  dplyr::select(site, lat, lon) %>%
+  distinct()
+
+head(coords_df)
+
+# How many sites?
+coords_df %>% 
+  pull(site) %>% 
+  unique() %>% 
+  length()
+
+# Convert to Spatial Points object
+mat <- as.matrix(data.frame(lon = coords_df$lon, lat = coords_df$lat))
+sp_pts <- SpatialPoints(mat, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+# Reproject
+sp_pts <- sp::spTransform(sp_pts, CRSobj = CRS(epsg$prj4[grep("^5383$", epsg$code)]))
+# bbox(sp_pts)
+# proj4string(sp_pts)
+
+# Calculate pairwise distances among sites (meters)
+nat_geo_dists <- rgeos::gDistance(sp_pts, byid = TRUE)
+dimnames(nat_geo_dists) <- list(coords_df$site, coords_df$site)
+
+# The geographic distance matrix, in km
+# nat_geo_dists/1000
+
+# The range of geographic distances among native range sites, in km
+round(range(nat_geo_dists[nat_geo_dists != 0])/1000, 2)
+
+```
+
+The closest geographic distance between unique sites at which we obtained calls from repeatedly sampled individuals was 11km in the native range, between EMBR and CHAC. Note that nest clusters at site 1145 were considered as a single nest site.
+
+Introduced range, using spatial projection for U.S. These are the pairwise distances among the 15 introduced range sites that we used to compare hierarchical mapping patterns between ranges.
+
+```{r echo = TRUE, eval = TRUE}
+
+# Access EPSG codes to reproject in meters
+# Used EPSG 2163 (U.S. National Atlas Equal Area projection)
+epsg <- rgdal::make_EPSG()
+# str(epsg)
+
+# epsg[grep("^2163$", epsg$code), ]
+
+# int_spatial <- nat_int_est %>%
+#   as_tibble() %>%
+#   dplyr::filter(range == "Introduced" & social_scale == "Site") %>%
+#   # Remove Austin and New Orleans calls
+#   dplyr::filter(!introduced_city %in% c("Austin", "New Orleans")) %>% 
+#   # Add back Austin and New Orleans calls from the later sampling years in each city (2019 for Austin and 2011 for New Orleans)
+#   bind_rows(
+#     nat_int_est %>%
+#       as_tibble() %>%
+#       dplyr::filter(range == "Introduced" & social_scale == "Site") %>%
+#       dplyr::filter(introduced_city == "Austin" & year == "2019")
+#   ) %>% 
+#   bind_rows(
+#     nat_int_est %>%
+#       as_tibble() %>%
+#       dplyr::filter(range == "Introduced" & social_scale == "Site") %>%
+#       dplyr::filter(introduced_city == "New Orleans" & year == "2011")
+#   ) 
+
+coords_df <- site_scale_nf %>% 
+  as_tibble() %>% 
+  dplyr::filter(range == "Introduced") %>% 
+  dplyr::select(site, lat, lon, introduced_city, dept_state) %>%
+  distinct()
+
+head(coords_df)
+
+# How many sites?
+coords_df %>% 
+  pull(site) %>% 
+  unique() %>% 
+  length()
+
+# Sampled in these states
+coords_df %>% 
+  pull(dept_state) %>% 
+  unique()
+
+mat <- as.matrix(data.frame(lon = coords_df$lon, lat = coords_df$lat))
+sp_pts <- SpatialPoints(mat, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+sp_pts <- sp::spTransform(sp_pts, CRSobj = CRS(epsg$prj4[grep("^2163$", epsg$code)]))
+# bbox(sp_pts)
+# proj4string(sp_pts)
+
+# Calculate pairwise distances among sites (meters)
+int_geo_dists <- rgeos::gDistance(sp_pts, byid = TRUE)
+dimnames(int_geo_dists) <- list(coords_df$site, coords_df$site)
+
+# The geographic distance matrix, in km
+# int_geo_dists/1000
+
+# The range of geographic distances among introduced range sites, in km
+round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
+
+```
+
+# Temporal comparisons, site scale, introduced range
+
+Initialize and save the 3 site scale datasets for temporal comparisons.
+```{r echo = TRUE, eval = FALSE}
+
+site_scale_nf_temp <- nat_int_est %>%
+  dplyr::filter(social_scale == "Site") %>%
+  # Filter by Austin and New Orleans calls
+  dplyr::filter(introduced_city %in% c("Austin", "New Orleans"))
+
+glimpse(site_scale_nf_temp)
+
+saveRDS(site_scale_nf_temp, file.path(path, "site_scale_nf_temp.RDS"))
+
+site_scale_cf_temp <- not_shiny_calls %>%
+  bind_rows(
+    nat_int_est %>%
+      filter(sound.files %in% cluster_calls$sound.files)
+  ) %>%
+  # Filter by Austin and New Orleans calls
+  filter(introduced_city %in% c("Austin", "New Orleans"))
+
+glimpse(site_scale_cf_temp)
+
+saveRDS(site_scale_cf_temp, file.path(path, "site_scale_cf_temp.RDS"))
+
+site_scale_vf_temp <- not_shiny_calls %>%
+  bind_rows(
+    nat_int_est %>%
+    filter(sound.files %in% observer_res_df_filt$sound.files)
+  ) %>%
+  # Filter by Austin and New Orleans calls
+  filter(introduced_city %in% c("Austin", "New Orleans"))
+
+glimpse(site_scale_vf_temp) 
+
+saveRDS(site_scale_vf_temp, file.path(path, "site_scale_vf_temp.RDS"))
+
+```
+
+```{r echo = TRUE, eval = TRUE}
+
+site_scale_nf_temp <- readRDS(file.path(path, "site_scale_nf_temp.RDS"))
+glimpse(site_scale_nf_temp)
+
+site_scale_cf_temp <- readRDS(file.path(path, "site_scale_cf_temp.RDS"))
+glimpse(site_scale_cf_temp)
+
+site_scale_vf_temp <- readRDS(file.path(path, "site_scale_vf_temp.RDS"))
+glimpse(site_scale_vf_temp)
+
+```
+
+Introduced range, using spatial projection for U.S. These are the pairwise distances among the 14 introduced range sites that we used to compare hierarchical mapping patterns over time in the introduced range. Calculated using the full site scale dataset for temporal comparisons, since all sites used for temporal analyses were the same (they just differed in which calls were used per site).
+
+2004 (6 sites, Texas and Louisiana).
+```{r echo = TRUE, eval = TRUE}
+
+site_scale_nf_temp %>% 
+  pull(site) %>% 
+  unique() %>% 
+  length()
+
+epsg <- rgdal::make_EPSG()
+
+#### Texas
+
+int_temporal_aust <- site_scale_nf_temp %>%
+  as_tibble() %>%
+  dplyr::filter(range == "Introduced") %>%
+  # Get the Austin calls
+  dplyr::filter(introduced_city == "Austin" & year == "2004")
+
+glimpse(int_temporal_aust)
+
+# Checking
+int_temporal_aust %>% 
+  group_by(site, introduced_city, year, dept_state) %>% 
+  dplyr::summarise(n = n())
+
+coords_df <- int_temporal_aust %>% 
+  dplyr::select(site, lat, lon, dept_state) %>%
+  distinct()
+
+# How many sites?
+coords_df %>% 
+  pull(site) %>% 
+  unique() %>% 
+  length()
+
+# Sampled in these states
+coords_df %>% 
+  pull(dept_state) %>% 
+  unique()
+
+mat <- as.matrix(data.frame(lon = coords_df$lon, lat = coords_df$lat))
+sp_pts <- SpatialPoints(mat, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+sp_pts <- sp::spTransform(sp_pts, CRSobj = CRS(epsg$prj4[grep("^2163$", epsg$code)]))
+# bbox(sp_pts)
+# proj4string(sp_pts)
+
+# Calculate pairwise distances among sites (meters)
+int_geo_dists <- rgeos::gDistance(sp_pts, byid = TRUE)
+dimnames(int_geo_dists) <- list(coords_df$site, coords_df$site)
+
+# The geographic distance matrix, in km
+int_geo_dists/1000
+
+# The range of geographic distances among introduced range sites, in km
+round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
+
+##### Louisiana
+
+int_temporal_norl <- site_scale_nf_temp %>%
+  as_tibble() %>%
+  dplyr::filter(range == "Introduced") %>%
+  # Get the New Orleans calls
+  dplyr::filter(introduced_city == "New Orleans" & year == "2004")
+
+glimpse(int_temporal_norl)
+
+# Checking
+int_temporal_norl %>% 
+  group_by(site, introduced_city, year, dept_state) %>% 
+  dplyr::summarise(n = n())
+
+coords_df <- int_temporal_norl %>% 
+  dplyr::select(site, lat, lon, dept_state) %>%
+  distinct()
+
+# How many sites?
+coords_df %>% 
+  pull(site) %>% 
+  unique() %>% 
+  length()
+
+# Sampled in these states
+coords_df %>% 
+  pull(dept_state) %>% 
+  unique()
+
+mat <- as.matrix(data.frame(lon = coords_df$lon, lat = coords_df$lat))
+sp_pts <- SpatialPoints(mat, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+sp_pts <- sp::spTransform(sp_pts, CRSobj = CRS(epsg$prj4[grep("^2163$", epsg$code)]))
+# bbox(sp_pts)
+# proj4string(sp_pts)
+
+# Calculate pairwise distances among sites (meters)
+int_geo_dists <- rgeos::gDistance(sp_pts, byid = TRUE)
+dimnames(int_geo_dists) <- list(coords_df$site, coords_df$site)
+
+# The geographic distance matrix, in km
+int_geo_dists/1000
+
+# The range of geographic distances among introduced range sites, in km
+round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
+
+```
+
+2011 (7 sites, Texas and Louisiana).
+```{r echo = TRUE, eval = TRUE}
+
+#### Texas
+
+int_temporal_aust <- site_scale_nf_temp %>%
+  as_tibble() %>%
+  dplyr::filter(range == "Introduced") %>%
+  # Get the Austin calls
+  dplyr::filter(introduced_city == "Austin" & year == "2011")
+
+glimpse(int_temporal_aust)
+
+# Checking
+int_temporal_aust %>% 
+  group_by(site, introduced_city, year, dept_state) %>% 
+  dplyr::summarise(n = n())
+
+coords_df <- int_temporal_aust %>% 
+  dplyr::select(site, lat, lon, dept_state) %>%
+  distinct()
+
+# How many sites?
+coords_df %>% 
+  pull(site) %>% 
+  unique() %>% 
+  length()
+
+# Sampled in these states
+coords_df %>% 
+  pull(dept_state) %>% 
+  unique()
+
+mat <- as.matrix(data.frame(lon = coords_df$lon, lat = coords_df$lat))
+sp_pts <- SpatialPoints(mat, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+sp_pts <- sp::spTransform(sp_pts, CRSobj = CRS(epsg$prj4[grep("^2163$", epsg$code)]))
+# bbox(sp_pts)
+# proj4string(sp_pts)
+
+# Calculate pairwise distances among sites (meters)
+int_geo_dists <- rgeos::gDistance(sp_pts, byid = TRUE)
+dimnames(int_geo_dists) <- list(coords_df$site, coords_df$site)
+
+# The geographic distance matrix, in km
+int_geo_dists/1000
+
+# The range of geographic distances among introduced range sites, in km
+round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
+
+##### Louisiana
+
+int_temporal_norl <- site_scale_nf_temp %>%
+  as_tibble() %>%
+  dplyr::filter(range == "Introduced") %>%
+  # Get the New Orleans calls
+  dplyr::filter(introduced_city == "New Orleans" & year == "2011")
+
+glimpse(int_temporal_norl)
+
+# Checking
+int_temporal_norl %>% 
+  group_by(site, introduced_city, year, dept_state) %>% 
+  dplyr::summarise(n = n())
+
+coords_df <- int_temporal_norl %>% 
+  dplyr::select(site, lat, lon, dept_state) %>%
+  distinct()
+
+# How many sites?
+coords_df %>% 
+  pull(site) %>% 
+  unique() %>% 
+  length()
+
+# Sampled in these states
+coords_df %>% 
+  pull(dept_state) %>% 
+  unique()
+
+mat <- as.matrix(data.frame(lon = coords_df$lon, lat = coords_df$lat))
+sp_pts <- SpatialPoints(mat, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+sp_pts <- sp::spTransform(sp_pts, CRSobj = CRS(epsg$prj4[grep("^2163$", epsg$code)]))
+# bbox(sp_pts)
+# proj4string(sp_pts)
+
+# Calculate pairwise distances among sites (meters)
+int_geo_dists <- rgeos::gDistance(sp_pts, byid = TRUE)
+dimnames(int_geo_dists) <- list(coords_df$site, coords_df$site)
+
+# The geographic distance matrix, in km
+int_geo_dists/1000
+
+# The range of geographic distances among introduced range sites, in km
+round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
+
+```
+
+2019 (6 sites, Texas only).
+```{r echo = TRUE, eval = TRUE}
+
+int_temporal <- site_scale_nf_temp %>%
+  as_tibble() %>%
+  dplyr::filter(range == "Introduced") %>%
+  # Get the Austin and New Orleans calls
+  dplyr::filter(introduced_city == "Austin" & year == "2019")
+
+glimpse(int_temporal)
+
+# Checking
+int_temporal %>% 
+  group_by(site, introduced_city, year, dept_state) %>% 
+  dplyr::summarise(n = n())
+
+coords_df <- int_temporal %>% 
+  dplyr::select(site, lat, lon, dept_state) %>%
+  distinct()
+
+# How many sites?
+coords_df %>% 
+  pull(site) %>% 
+  unique() %>% 
+  length()
+
+# Sampled in these states
+coords_df %>% 
+  pull(dept_state) %>% 
+  unique()
+
+mat <- as.matrix(data.frame(lon = coords_df$lon, lat = coords_df$lat))
+sp_pts <- SpatialPoints(mat, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+sp_pts <- sp::spTransform(sp_pts, CRSobj = CRS(epsg$prj4[grep("^2163$", epsg$code)]))
+# bbox(sp_pts)
+# proj4string(sp_pts)
+
+# Calculate pairwise distances among sites (meters)
+int_geo_dists <- rgeos::gDistance(sp_pts, byid = TRUE)
+dimnames(int_geo_dists) <- list(coords_df$site, coords_df$site)
+
+# The geographic distance matrix, in km
+int_geo_dists/1000
+
+# The range of geographic distances among introduced range sites, in km
+round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
+
+```
