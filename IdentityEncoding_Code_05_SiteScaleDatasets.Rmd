@@ -88,7 +88,7 @@ knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity
 
 This code accompanies the following paper in PLOS Computational Biology:
 
-Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. Individual identity information persists in learned calls of introduced parrot populations.
+Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. 2023. Individual identity information persists in learned calls of introduced parrot populations.
 
 <hr>
 
@@ -122,7 +122,7 @@ Read in the extended selection table (EST). Metadata and wave objects for pre-pr
 ```{r}
 
 nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
-glimpse(nat_int_est)
+# glimpse(nat_int_est)
 
 ```
 
@@ -158,11 +158,11 @@ drop_is_calls <- nat_int_est %>%
 length(drop_is_calls)
 
 # Checking, looks good
-nat_int_est %>%
-  as_tibble() %>% 
-  dplyr::filter(sound.files %in% drop_is_calls) %>%
-  dplyr::select(sound.files, Bird_ID) %>%
-  kable(align = rep("c", nrow(.)))
+# nat_int_est %>%
+#   as_tibble() %>% 
+#   dplyr::filter(sound.files %in% drop_is_calls) %>%
+#   dplyr::select(sound.files, Bird_ID) %>%
+#   kable(align = rep("c", nrow(.)))
 
 # Drop these calls from the extended selection table and continue with analyses
 # nat_int_est <- nat_int_est %>%
@@ -174,6 +174,7 @@ nat_int_est <- nat_int_est[-grep(paste(paste("^", drop_is_calls, "$", sep = ""),
 # 1582 calls remain out of the original 1596 calls read in above
 dim(nat_int_est)
 class(nat_int_est)
+glimpse(nat_int_est)
 
 ```
 
