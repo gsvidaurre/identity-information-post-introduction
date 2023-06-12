@@ -1,20 +1,20 @@
 ---
-title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 02:</center>
-subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">SPCC Similarity and Preparing for Visual Classification</center>
- &nbsp;
+title: "Identity Encoding Code 02:"
+subtitle: "SPCC Similarity and Preparing for Visual Classification"
 author: |
+  <hr>
   <center style="font-style:normal;">
   <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
-  &nbsp;
+  <br>
+  <br>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
-  <br />
+  <br>
   <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
-  &nbsp;
-date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
-  <br />
+  <br>
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
     toc: true
@@ -29,42 +29,50 @@ a:hover {
   color: #23527c !important;
 }
 
-h1.title {
+h1.title { /* Document title */
   font-size: 32px;
   color: black;
   font-weight: normal;
+  text-align: center;
 }
 
 h1 {
-   color: black;
+   color: #0E0E7D;
    font-size: 26px;
    font-weight: normal;
 }
 
 h2 {
-   color: black;
+   color: #0E0E7D;
    font-size: 24px;
    font-weight: bold;
 }
 
-h3 {
-   color: black;
-   font-size: 20px;
+h3 { /* Document subtitle */
+   color: #0E0E7D;
+   font-size: 28px;
    font-weight: normal;
+   text-align: center;
 }
 
 h4 {
-   color: black;
+   color: #0E0E7D;
    font-size: 20px;
    font-weight: normal;
 }
 
+h4.date { /* Date in document header */
+  font-size: 22px;
+  font-style:normal;
+  text-align: center;
+}
+
 body{ /* Normal */
-      font-size: 18px;
+      font-size: 20px;
   }
   
 code.r{ /* Code block */
-    font-size: 18px;
+    font-size: 20px;
 }
 </style>
 
@@ -76,7 +84,15 @@ knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity
 
 ```
 
-Call similarity across ranges and social scales was measured by spectrographic cross-correlation (SPCC) on spectrograms and Mel-frequency cepstral coefficients. We then used SPCC similarity within and among repeatedly sampled individuals per range (the individual scale dataset) to identify a similarity threshold that could be applied to identify calls most likely to represent repeated sampling of unmarked individuals at the site scale. This threshold was used to filter the site-scale calls, and we validated the use of clustering via Gaussian mixture models to identify potential repeated sampling of individuals. Next, we chose calls that would be visually classified in a Shiny app. Calls were selected for  training module and prediction modules. Finally, we validated the use of SPCC versus random forests similarity (using native range individuals and a random forests similarity matrix from previous work<a href='#References'><sup>[1]</sup></a>) to identify potential repeated individuals via Gaussian mixture models. See the methods and appendix of the associated publication for more information about these analyses.
+<hr>
+
+This code accompanies the following paper in PLOS Computational Biology:
+
+Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. Individual identity information persists in learned calls of introduced parrot populations.
+
+<hr>
+
+Call similarity across ranges and social scales was measured by spectrographic cross-correlation (SPCC) on spectrograms and Mel-frequency cepstral coefficients. We then used SPCC similarity within and among repeatedly sampled individuals per range (the individual scale dataset) to identify a similarity threshold that could be applied to identify calls most likely to represent repeated sampling of unmarked individuals at the site scale. This threshold was used to filter the site-scale calls, and we validated the use of clustering via Gaussian mixture models to identify potential repeated sampling of individuals. Next, we chose calls that would be visually classified in a Shiny app. Calls were selected for training module and prediction modules. Finally, we validated the use of SPCC versus random forests similarity (using native range individuals and a random forests similarity matrix from previous work<a href='#References'><sup>[1]</sup></a>) to identify potential repeated individuals via Gaussian mixture models. See the methods and appendix of the associated publication for more information about these analyses.
 
 This code was originally run with R version 3.4.4 and package versions reported for previous work<a href='#References'><sup>[1]</sup></a>. The RMarkdown output was knitted with a later version of R (see session info at the end of the script).
 
@@ -108,7 +124,7 @@ cores <- parallel::detectCores() - 2
 ```
 
 Read in the extended selection table (EST) that contains metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales.
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
 glimpse(nat_int_est)
@@ -118,7 +134,7 @@ glimpse(nat_int_est)
 # Measuring SPCC similarity
 
 Run SPCC for the native and introduced range calls at both social scales. Perform SPCC on spectrograms and Mel-frequency cepstral coefficients (MFCC).
-```{r chunk2, eval = FALSE}
+```{r eval = FALSE}
 
 xc_mat <- warbleR::xcorr(nat_int_est, wl = 378, ovlp = 90, wn = "hanning", cor.method = "pearson", parallel = cores, na.rm = FALSE, bp = c(0.5, 9), cor.mat = TRUE, path = path, type = "spectrogram")
 str(xc_mat)
@@ -134,14 +150,14 @@ saveRDS(xc_mat_mfcc, file.path(path, "xc_mat_NAT_INT_mfcc.RDS"))
 
 # Choosing a threshold to filter calls for visual classification
 
-This step was carried out in preparation for multi-observer visual classification. During initial testing of the Shiny app used for visual classification, Valeria and I tried classifying all calls per site for a handful of site-years, and found this very difficult. One of the challenges in setting up a Shiny app for visual classification was to identify the calls that were most likely to represent potential repeated sampling of individuals per site-year, so as to make better use of everyone's time. 
+This step was carried out in preparation for multi-observer visual classification. During initial testing of the Shiny app used for visual classification, Valeria and I tried classifying all calls per site for a handful of site-years, and found this to be very difficult. One of the challenges in setting up a Shiny app for visual classification was to identify the calls that were most likely to represent potential repeated sampling of individuals per site-year so as to make better use of everyone's time. 
 
 Although it might seem circular, using a similarity threshold to filter calls prior to visual classification could help reduce the number of calls that co-authors would have to visually assess. I proceeded by using all known repeatedly sampled individuals (the individual scale dataset).
 
 I parsed SPCC similarity within and among known repeatedly sampled individuals to assess overlap in the distributions of these two groups of similarity values. Here, for the comparisons among individuals, I compared individuals within site-years only, which will also be the case in the Shiny app given to co-authors to identify potential repeated sampling of individuals. Some individuals were the single bird sampled at a given site-year, so these received NAs for the among individual comparisons.
-```{r chunk3}
+```{r}
 
-xc_mat <- readRDS(file.path(path, "xc_mat_NAT_INV.RDS"))
+xc_mat <- readRDS(file.path(path, "xc_mat_NAT_INT.RDS"))
 xc_mat_mfcc <- readRDS(file.path(path, "xc_mat_NAT_INT_mfcc.RDS"))
 
 # Change dimnames for grepping
@@ -155,20 +171,22 @@ method <- c("spectro", "MFCC")
 mat_list <- list(xc_mat, xc_mat_mfcc)
 pop <- c("Native", "Introduced")
 
-# List all knwon repeatedly sampled individuals per range
+# List all known repeatedly sampled individuals per range
 indivs <- list(
   nat_int_est %>%
-    filter(social_scale == "Individual") %>%
-    filter(range == "Native") %>%
-    mutate(
+    as_tibble() %>% # using tidyverse without conversion into a tibble leads to issues
+    dplyr::filter(social_scale == "Individual") %>%
+    dplyr::filter(range == "Native") %>%
+    dplyr::mutate(
       Bird_ID = as.character(Bird_ID)
     ) %>%
     pull(Bird_ID) %>%
     unique(), 
   nat_int_est %>%
-    filter(social_scale == "Individual") %>%
-    filter(range == "Introduced") %>%
-    mutate(
+    as_tibble() %>% 
+    dplyr::filter(social_scale == "Individual") %>%
+    dplyr::filter(range == "Introduced") %>%
+    dplyr::mutate(
       Bird_ID = as.character(Bird_ID)
     ) %>%
     pull(Bird_ID) %>%
@@ -177,8 +195,8 @@ indivs <- list(
 indivs
 
 # x <- 1 # SPCC method
-# i <- 1 # range
-# z <- 3 # individual
+# i <- 2 # range
+# z <- 1 # individual
 SPCC_vals_df <- rbindlist(invisible(pblapply(1:length(method), function(x){
   
   res2 <- rbindlist(lapply(1:length(pop), function(i){
@@ -240,7 +258,7 @@ SPCC_vals_df <- rbindlist(invisible(pblapply(1:length(method), function(x){
 
 # Change factor levels for plotting
 SPCC_vals_df <- SPCC_vals_df %>%
-  mutate(
+  dplyr::mutate(
     range = factor(range, levels = c("Native", "Introduced")),
     method = factor(method, levels = c("spectro", "MFCC")),
     type = factor(type, levels = c("Same", "Different"))
@@ -251,17 +269,17 @@ glimpse(SPCC_vals_df)
 ```
 
 I checked out the distribution of SPCC values within and among known repeatedly sampled individuals. I did this by range, type and method. 
-```{r chunk4, message = FALSE, warning = FALSE}
+```{r message = FALSE, warning = FALSE}
 
 tmp_spec <- SPCC_vals_df %>%
-  filter(method == "spectro") %>%
+  dplyr::filter(method == "spectro") %>%
   droplevels()
 
 spec_means <- tapply(tmp_spec$SPCC_vals, list(tmp_spec$type, tmp_spec$range), mean, na.rm = TRUE)
 spec_means
 
 tmp_mfcc <- SPCC_vals_df %>%
-  filter(method == "MFCC") %>%
+  dplyr::filter(method == "MFCC") %>%
   droplevels()
 
 mfcc_means <- tapply(tmp_mfcc$SPCC_vals, list(tmp_mfcc$type, tmp_mfcc$range), mean, na.rm = TRUE)
@@ -297,7 +315,7 @@ ggplot(data = SPCC_vals_df, aes(x = SPCC_vals)) +
 ```
 
 By type and method across ranges combined (native and introduced).
-```{r chunk5, message = FALSE, warning = FALSE}
+```{r message = FALSE, warning = FALSE}
 
 means <- tapply(SPCC_vals_df$SPCC_vals, list(SPCC_vals_df$type, SPCC_vals_df$method), mean, na.rm = TRUE)
 means
@@ -326,12 +344,12 @@ ggplot(SPCC_vals_df, aes(x = SPCC_vals)) +
 ```
 
 Types combined in overlapping histograms by method, ranges combined.
-```{r chunk6, message = FALSE, warning = FALSE}
+```{r message = FALSE, warning = FALSE}
 
 cols <- alpha(c("gray35", "forestgreen"), 0.65)
 
 SPCC_vals_df_tmp <- SPCC_vals_df %>%
-  mutate(
+  dplyr::mutate(
     method = as.character(method),
     method = paste("SPCC", method, sep = "-")
   )
@@ -340,10 +358,10 @@ SPCC_vals_df_tmp <- SPCC_vals_df %>%
 SPCC_vals_df_tmp %>%
   ggplot(aes(x = SPCC_vals)) +
   geom_histogram(data = SPCC_vals_df_tmp %>%
-                   filter(type == "Same") %>% droplevels(),
+                   dplyr::filter(type == "Same") %>% droplevels(),
                     aes(fill = type), bins = 100) +
   geom_histogram(data = SPCC_vals_df_tmp %>%
-                   filter(type == "Different") %>% droplevels(),
+                   dplyr::filter(type == "Different") %>% droplevels(),
                     aes(fill = type), bins = 100) +
   facet_wrap(~ method) +
   scale_fill_manual(values = cols) +
@@ -355,32 +373,32 @@ SPCC_vals_df_tmp %>%
 
 ```
 
-From these graphics it was clear that SPCC on spectrograms picked up a cleaner split within versus among individuals than SPCC on cepstral coefficients. In other words, there was less overlap in the distributions of the within versus among individual similarity values using SPCC on spectrograms.
+SPCC on spectrograms picked up a cleaner split within versus among individuals than SPCC on cepstral coefficients. In other words, there was less overlap in the distributions of the within versus among individual similarity values using SPCC on spectrograms.
 
 # SPCC similarity threshold
 
 Next, I identified the SPCC similarity threshold that we used to pull out calls for visual classification in the Shiny app. I found the maximum value of the bin of SPCC values for which there was less overlap than expected by chance (50%) between the two distributions (e.g. similarity values that represented the calls of the same versus different known repeatedly sampled individuals compared to each other). I iterated over multiple bin numbers to identify an appropriate bin, as the choice of bin number affected the amount of overlap between distributions. Then I selected the bin number that yielded the highest of the minimum SPCC values representing < 50% overlap in the within versus among individual distributions. The minimum SPCC value for the given bin was selected as the SPCC similarity threshold that we used to select calls for visual classification.
-```{r chunk7, warning = FALSE, message = FALSE}
+```{r warning = FALSE, message = FALSE}
 
 withn <- SPCC_vals_df %>%
-  filter(method == "spectro") %>% 
-  filter(type == "Same") %>% 
+  dplyr::filter(method == "spectro") %>% 
+  dplyr::filter(type == "Same") %>% 
   droplevels() %>%
-  filter(!is.na(SPCC_vals)) %>%
+  dplyr::filter(!is.na(SPCC_vals)) %>%
   pull(SPCC_vals)
 head(withn)
 
 amng <- SPCC_vals_df %>%
-  filter(method == "spectro") %>% 
-  filter(type == "Different") %>% 
+  dplyr::filter(method == "spectro") %>% 
+  dplyr::filter(type == "Different") %>% 
   droplevels() %>%
-  filter(!is.na(SPCC_vals)) %>%
+  dplyr::filter(!is.na(SPCC_vals)) %>%
   pull(SPCC_vals)
 head(amng)
 
 # Set the mean value of the Different category
 spectro_df <- SPCC_vals_df %>%
-  filter(method == "spectro") %>%
+  dplyr::filter(method == "spectro") %>%
   droplevels()
 
 means <- tapply(spectro_df$SPCC_vals, spectro_df$type, mean, na.rm = TRUE)
@@ -418,7 +436,7 @@ bin_df <- rbindlist(invisible(pblapply(1:length(bins), function(i){
 
   # Add this vector of bins back to the data frame
   tmp_df2 <- tmp_df %>%
-    mutate(
+    dplyr::mutate(
       bins = factor(brk_tmp)
     )
   # glimpse(tmp_df2)
@@ -428,7 +446,7 @@ bin_df <- rbindlist(invisible(pblapply(1:length(bins), function(i){
   sum_df <- data.frame(tapply(tmp_df2$vals, list(tmp_df2$bins, tmp_df2$type), function(X){
     length(X)
   })) %>%
-    mutate(
+    dplyr::mutate(
       Different = ifelse(is.na(Different), 0, Different),
       Same = ifelse(is.na(Same), 0, Same)
     ) %>%
@@ -440,7 +458,7 @@ bin_df <- rbindlist(invisible(pblapply(1:length(bins), function(i){
   
   # Filter the data frame by rows in which Same has more values present than different per bin
   sum_df <- sum_df %>%
-    filter(Same - Different > 0)
+    dplyr::filter(Same - Different > 0)
   sum_df
   
   # Percentages will be negative when Different has more values present than Same
@@ -484,10 +502,10 @@ cols <- alpha(c("gray35", "forestgreen"), 0.65)
 
 ggplot(spectro_df, aes(x = SPCC_vals)) +
   geom_histogram(data = spectro_df %>%
-                   filter(type == "Same") %>% droplevels(),
+                   dplyr::filter(type == "Same") %>% droplevels(),
                     aes(fill = type), bins = 100) +
   geom_histogram(data = spectro_df %>%
-                   filter(type == "Different") %>% droplevels(),
+                   dplyr::filter(type == "Different") %>% droplevels(),
                     aes(fill = type), bins = 100) +
   geom_vline(xintercept = bin_df$min_SPCC_val[bin_df$bins_used == bin_val], linetype = "dashed") +
   annotate("text", label = paste("SPCC threshold =", round(bin_df$min_SPCC_val[bin_df$bins_used == bin_val], 4)), x = 0.65, y = 200) +
@@ -512,8 +530,8 @@ ggplot(spectro_df, aes(x = SPCC_vals)) +
 
 ```
 
-Save the SPCC threshold for later use.
-```{r chunk8, eval = FALSE}
+Save the SPCC threshold for later use. The value below is what I used for thresholding which calls went into the Shiny app or not.
+```{r eval = FALSE}
 
 thresh <- bin_df$min_SPCC_val[bin_df$bins_used == bin_val]
 thresh # 0.4383545
@@ -531,7 +549,7 @@ Calls that had any pairwise comparisons with SPCC similarity values above or equ
 For the Shiny app training module, I created training datasets that reflected the task that co-authors had to perform in the "prediction" module of the app. For site-years with known repeatedly sampled individuals (the individual scale dataset), I obtained the individual and site scale calls, and removed those below the SPCC threshold. Then I mixed randomly selected calls for each known repeatedly sampled bird at the given site with randomly selected site scale calls from that same site. Training accuracy per observer was evaluated by how many of the known repeatedly individual calls were classified together. Some of these sites with known repeatedly sampled birds may have also had calls that represented inadvertent repeated sampling of other individuals.
 
 Gaussian mixture models were used to perform clustering on the calls selected for the training module, resulting in clusters that I treated as potential repeatedly sampled individuals. These clusters were the classes that I presented to observers in the app (see images used for visual checking below). Each site in the training module was presented on a single page, and calls were presented in groups (classes) by their assigned cluster.
-```{r chunk9}
+```{r eval = FALSE}
 
 nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
 # glimpse(nat_int_est)
@@ -547,7 +565,7 @@ dimnames(xc_mat) <- list(gsub(".WAV-1", ".WAV", dimnames(xc_mat)[[1]]), gsub(".W
 # From the pooled calls by site_year, filter out pairwise similarity values less than the SPCC threshold determined above, then retain the remaining calls
 # Perform model-based clustering on calls, assess accuracy and whether or not this can be given straight to co-authors
 nat_int_est %>%
-  filter(social_scale == "Individual") %>%
+  dplyr::filter(social_scale == "Individual") %>%
   group_by(range, Bird_ID, site_year) %>%
   count()
 
@@ -563,9 +581,9 @@ mBIC_res_list <- invisible(pblapply(1:length(site_year), function(x){
   
   # Get calls for the known repeatedly sampled individuals that will be used at this site
   icalls <- nat_int_est %>%
-  filter(social_scale == "Individual") %>%
-  filter(Bird_ID %in% indivs[[x]]) %>%
-  mutate(
+  dplyr::filter(social_scale == "Individual") %>%
+  dplyr::filter(Bird_ID %in% indivs[[x]]) %>%
+  dplyr::mutate(
     sound.files = as.character(sound.files) 
   ) %>%
   pull(sound.files)
@@ -575,9 +593,9 @@ mBIC_res_list <- invisible(pblapply(1:length(site_year), function(x){
   icalls <- unlist(lapply(1:length(indivs[[x]]), function(z){
     
     ic <- nat_int_est %>%
-      filter(social_scale == "Individual") %>%
-      filter(Bird_ID %in% indivs[[x]][z]) %>%
-      mutate(
+      dplyr::filter(social_scale == "Individual") %>%
+      dplyr::filter(Bird_ID %in% indivs[[x]][z]) %>%
+      dplyr::mutate(
         sound.files = as.character(sound.files) 
       ) %>%
       pull(sound.files)
@@ -595,7 +613,7 @@ mBIC_res_list <- invisible(pblapply(1:length(site_year), function(x){
   
   # Get site scale calls that will be used at this site
   scalls <- nat_int_est %>%
-  filter(social_scale == "Site")
+  dplyr::filter(social_scale == "Site")
   # glimpse(scalls)
   
   # Remove calls that have the suffix "_site_scale", since these represent 1 call per known repeatedly sampled individuals included at the site scale
@@ -686,7 +704,7 @@ str(mBIC_res_list)
 # Visual validation of training module approach
 
 I made catalogs of calls that would be used for Shiny app training. These catalogs facilitated visual assessment of the structural similarity of calls assigned to the same and different clusters. I designed the Shiny app so that calls in each cluster would be presented together in the same class for visual inspection.
-```{r chunk10, eval = FALSE}
+```{r eval = FALSE}
 
 # For catalogs to save in the right folder
 setwd(path)
@@ -727,11 +745,11 @@ The catalogs for training looked pretty good. I saved these calls per site for t
 
 # Writing out calls for training module 
 
-```{r chunk11, eval = FALSE}
+```{r eval = FALSE}
 
 # Collapse the list from model-based clustering into a data frame
 mBIC_res_df <- rbindlist(mBIC_res_list) %>%
-  mutate(
+  dplyr::mutate(
     indiv = as.character(indiv)
   )
 glimpse(mBIC_res_df)
@@ -782,7 +800,7 @@ saveRDS(shiny_training_module_est, file.path(path, "shiny_potrepindiv_training_m
 # Clustering calls for the prediction module
 
 Gaussian mixture modelling was used to cluster calls per site-year in the full dataset between ranges after implementing the SPCC similarity threshold.
-```{r chunk12, eval = TRUE}
+```{r eval = FALSE}
 
 nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
 # glimpse(nat_int_est)
@@ -795,7 +813,7 @@ dimnames(xc_mat) <- list(gsub(".WAV-1", ".WAV", dimnames(xc_mat)[[1]]), gsub(".W
 
 # Filter the full EST by site scale calls
 site_calls <- nat_int_est %>%
-    filter(social_scale == "Site")
+    dplyr::filter(social_scale == "Site")
 
 # Initialize unique site_years across this dataset
 site_year <- unique(site_calls$site_year)
@@ -838,7 +856,7 @@ mBIC_res_list <- invisible(pblapply(1:length(site_year), function(x){
   # range(pairvals$SPCC_vals[pairvals$SPCC_vals >= thresh])
   
   pairvals2 <- pairvals[pairvals$SPCC_vals >= thresh, ] %>%
-    mutate(
+    dplyr::mutate(
       call = as.character(call),
       compared2 = as.character(compared2)
     )
@@ -917,7 +935,7 @@ range(numc[numc > 30])
 # Visual validation of clusters for prediction dataset
 
 I made catalogs of calls identified for the Shiny app for a few sites to assess how calls were assigned to clusters (to be used as classes representing possible repeatedly sampled individuals in the prediction module).
-```{r chunk13, eval = FALSE}
+```{r eval = FALSE}
 
 setwd(path)
 
@@ -963,11 +981,11 @@ The clustering approach sometimes grouped visibly similar calls together, but it
 How to split up this data for the app? This depended a lot on how to make the app available to co-authors. I set up the app to upload to Dropbox (I did not enough expertise to set up remote data storage), which required each co-author have a copy of the app on their local machine.
 
 I generated an EST for the Shiny prediction module. This contained the new IDs per call, the classes identified through clustering, and co-authors' usernames per call to indicate which should be pulled out per observer.
-```{r chunk14, eval = FALSE}
+```{r eval = FALSE}
 
 # Collapse the list from model-based clustering into a data frame
 mBIC_res_df <- rbindlist(mBIC_res_list2) %>%
-  mutate(
+  dplyr::mutate(
     indiv = as.character(indiv)
   )
 glimpse(mBIC_res_df)
@@ -983,11 +1001,11 @@ length(shiny_test_calls)
 
 # 81.42% of the site scale data will be evaluated for potential repeated sampling of individuals
 length(shiny_test_calls)/nrow(nat_int_est %>%
-                        filter(social_scale == "Site"))
+                        dplyr::filter(social_scale == "Site"))
 
 # 18.58% of site scale calls will not be evaluated
 (nrow(site_calls) - length(shiny_test_calls))/nrow(nat_int_est %>%
-                        filter(social_scale == "Site"))
+                        dplyr::filter(social_scale == "Site"))
 
 # Subset the EST by these calls
 inds <- grep(paste(paste("^", shiny_test_calls, "$", sep = ""), collapse = "|"), nat_int_est$sound.files)
@@ -1017,7 +1035,7 @@ table(shiny_prediction_module_est$Bird_ID)
 ```
 
 I assigned calls to observers by randomly selecting 2 sites for the first author, then I randomly selected 10 sites for each co-author. Finally, I selected 4 sites that everyone would assess, for the purpose of multi-observer reliability analyses.
-```{r chunk15, eval = FALSE}
+```{r eval = FALSE}
 
 site_years <- unique(shiny_prediction_module_est$site_year)
 site_years
@@ -1098,7 +1116,7 @@ saveRDS(shiny_prediction_module_est, file.path(path, "shiny_potrepindiv_predicti
 What if random forests similarity provided better clustering performance? If so, using random forests similarity could provide co-authors with better groupings of calls from the start, and I should wait to send out the app until obtaining random forests similarity for all calls.
 
 I validated this possibility by comparing clustering results on the same individuals/calls used in random forests model validation for the native range to SPCC clustering performance.
-```{r chunk16, eval = TRUE}
+```{r eval = TRUE}
 
 rf_mat <- readRDS(file.path("/media/gsvidaurre/MYIOPSITTA/R/Uruguay2017_MonkParakeet_CallAnalysis/Data/Site_Recordings", "proxm_ms.RDS"))
 str(rf_mat)
@@ -1107,9 +1125,9 @@ sup_rf_comb_pp <- readRDS(file.path("/media/gsvidaurre/MYIOPSITTA/R/Uruguay2017_
 dim(sup_rf_comb_pp)
 
 sup_rf_val <- sup_rf_comb_pp %>%
-  filter(set == "validatn")
+  dplyr::filter(set == "validatn")
 dim(sup_rf_val)
-names(sup_rf_val)
+# names(sup_rf_val)
 
 nat_nms <- paste(gsub(".WAV-", "_", sup_rf_val$uniq_call_ID), ".WAV", sep = "")
 nat_nms
@@ -1119,7 +1137,7 @@ dimnames(rf_mat) <- list(nat_nms, nat_nms)
 # Call ID isn't necessary, since we took all calls for 1/2 of individuals for training, and the rest of the individuals for validation
 nat_indivs <- c("RAW", "ZW8", "UM3", "UM5")
 
-xc_mat <- readRDS(file.path(path, "xc_mat_NAT_INV.RDS"))
+xc_mat <- readRDS(file.path(path, "xc_mat_NAT_INT.RDS"))
 str(xc_mat)
 
 # Change dimnames for grepping
@@ -1127,8 +1145,8 @@ dimnames(xc_mat) <- list(gsub(".WAV-1", ".WAV", dimnames(xc_mat)[[1]]), gsub(".W
 
 # Subset the SPCC matrix by the individuals used in the native range random forests validation. Here searching for calls associated with these IDs
 nat_calls <- nat_int_est %>%
-  filter(social_scale == "Individual") %>%
-  filter(Bird_ID %in% paste("NAT", nat_indivs, sep = "-")) %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  dplyr::filter(Bird_ID %in% paste("NAT", nat_indivs, sep = "-")) %>%
   pull(sound.files)
 nat_calls
 
@@ -1148,13 +1166,13 @@ mBIC_res <- rbindlist(invisible(pblapply(1:length(method), function(x){
   
   if(method[x] == "SPCC"){
      ids <- nat_int_est %>%
-       filter(social_scale == "Individual") %>% 
-       filter(Bird_ID %in% paste("NAT", nat_indivs, sep = "-")) %>%
+       dplyr::filter(social_scale == "Individual") %>% 
+       dplyr::filter(Bird_ID %in% paste("NAT", nat_indivs, sep = "-")) %>%
        pull(Bird_ID)
   } else {
     ids <- sup_rf_comb_pp %>%
-      filter(set == "validatn") %>%
-      mutate(
+      dplyr::filter(set == "validatn") %>%
+      dplyr::mutate(
         indiv = as.character(indiv),
         indiv = paste("NAT", indiv, sep = "-")
       ) %>%
@@ -1181,7 +1199,8 @@ A single call was misclassified per method. For SPCC, one RAW call was placed in
     
     2. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
     
-```{r chunk17}
+Documenting session information and software versions at the time of knitting the RMarkdown output.
+```{r}
 
 sessionInfo()
 

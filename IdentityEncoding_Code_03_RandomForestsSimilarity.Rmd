@@ -1,20 +1,20 @@
 ---
-title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 03:</center>
-subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Random Forests Similarity </center>
- &nbsp;
+title: "Identity Encoding Code 03:"
+subtitle: "Random Forests Similarity"
 author: |
+  <hr>
   <center style="font-style:normal;">
   <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
-  &nbsp;
+  <br>
+  <br>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
-  <br />
+  <br>
   <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
-  &nbsp;
-date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
-  <br />
+  <br>
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
     toc: true
@@ -29,42 +29,50 @@ a:hover {
   color: #23527c !important;
 }
 
-h1.title {
+h1.title { /* Document title */
   font-size: 32px;
   color: black;
   font-weight: normal;
+  text-align: center;
 }
 
 h1 {
-   color: black;
+   color: #0E0E7D;
    font-size: 26px;
    font-weight: normal;
 }
 
 h2 {
-   color: black;
+   color: #0E0E7D;
    font-size: 24px;
    font-weight: bold;
 }
 
-h3 {
-   color: black;
-   font-size: 20px;
+h3 { /* Document subtitle */
+   color: #0E0E7D;
+   font-size: 28px;
    font-weight: normal;
+   text-align: center;
 }
 
 h4 {
-   color: black;
+   color: #0E0E7D;
    font-size: 20px;
    font-weight: normal;
 }
 
+h4.date { /* Date in document header */
+  font-size: 22px;
+  font-style:normal;
+  text-align: center;
+}
+
 body{ /* Normal */
-      font-size: 18px;
+      font-size: 20px;
   }
   
 code.r{ /* Code block */
-    font-size: 18px;
+    font-size: 20px;
 }
 </style>
 
@@ -75,6 +83,14 @@ knitr::opts_knit$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-
 knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
 
 ```
+
+<hr>
+
+This code accompanies the following paper in PLOS Computational Biology:
+
+Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. Individual identity information persists in learned calls of introduced parrot populations.
+
+<hr>
 
 Here we measured similarity of contact calls with supervised random forests. Acoustic measurements were obtained for calls across social scales and ranges, including:
 
@@ -94,7 +110,7 @@ Acoustic and image measurements were turned into features using multidimensional
 
 As in previous work<a href='#References'><sup>[1]</sup></a>, we used repeatedly sampled individuals to train and validate random forests classification models. In other words, individual identities were used as classes for random forests training. We split individuals from both ranges into training and validation datasets. Site-scale calls across ranges were reserved for prediction. The random forests proximity matrix was used as a similarity matrix for the site scale. 
 
-Our approach is modelled after Sara Keen's original paper<a href='#References'><sup>[2]</sup></a>, in which we used supervised random forests in a manner more similar to unsupervised models. Models were trained to classify calls back to individuals, and were provided new datasets for validation and prediction. However, as the validation and prediction datasets contained calls for different individuals, we ignored the resulting classifications and instead used the proximity matrix for subsequent analyses of hierarchical mapping patterns.
+Our approach is modeled after Sara Keen's original paper<a href='#References'><sup>[2]</sup></a>, in which we used supervised random forests in a manner more similar to unsupervised models. Models were trained to classify calls back to individuals, and were provided new datasets for validation and prediction. However, as the validation and prediction datasets contained calls for different individuals, we ignored the resulting classifications and instead used the proximity matrix for subsequent analyses of hierarchical mapping patterns.
 
 The supervised random forests analysis documented here is very similar to previous work<a href='#References'><sup>[1]</sup></a>. However, we did not use t-Distributed Stochastic Neighbor Embedding to generate features. We only used the `ranger` package to perform random forests, and we did not include randomly generated variables as predictors for model validation. See the methods and appendix of the associated publication for more information about these analyses.
 
@@ -110,8 +126,10 @@ Please cite the associated papers and the code (see DOIs on GitHub) if you find 
 
 rm(list = ls())
 
-# Doublecheck whether the e1071 and MLmetrics packages are necessary
-X <- c("warbleR", "ggplot2", "caret", "MASS", "dtw", "pbapply", "graphics",  "dplyr", "data.table", "parallel", "grid", "gtable", "corrplot", "MLmetrics", "e1071", "mclust", "tidyverse", "Boruta", "edarf", "viridis", "knitr", "pracma", "ranger")
+# libray(devtools)
+# devtools::install_github("zmjones/edarf", subdir = "pkg")
+
+X <- c("warbleR", "ggplot2", "caret", "MASS", "dtw", "pbapply", "graphics",  "dplyr", "data.table", "parallel", "grid", "gtable", "corrplot", "MLmetrics", "e1071", "mclust", "tidyverse", "Boruta", "viridis", "edarf", "knitr", "pracma", "ranger")
 
 invisible(lapply(X, library, character.only = TRUE))
 
@@ -186,17 +204,17 @@ class(nat_int_est)
 
 # Spectrographic cross-correlation (SPCC) similarity
 
-SPCC similarity based on spectrograms and Mel-frequency cepstral coefficients was performed for all calls in an earlier script. See HierarchicalMapping_AdditionalMaterials03_SPCC_VisualClassificationPrep.Rmd. 
+SPCC similarity based on spectrograms and Mel-frequency cepstral coefficients was performed for all calls in an earlier script (see Code_02).
 
 # Random forests similarity 
 
 ## Training plan
 
-Known repeatedly sampled individuals (individual scale calls) were selected for model training. The same repeatedly sampled native range individuals were be used as in previously published results<a href='#References'><sup>[1]</sup></a>. These native range individuals were all from the same site. We did not sample sufficent individuals repeatedly at the same site in the introduced range, so for this range we used known repeatedly sampled individuals with the most calls. We excluded ASCA_2019 as this individual had no social group members (a lone parakeet in El Paso, TX). In sum, we used 4 individuals per range with the highest numbers of calls for model training, and introduced range birds used for training were sampled from different sites and years. 
+Known repeatedly sampled individuals (individual scale calls) were selected for model training. The same repeatedly sampled native range individuals were be used as in previously published results<a href='#References'><sup>[1]</sup></a>. These native range individuals were all from the same site. We did not sample sufficient individuals repeatedly at the same site in the introduced range, so for this range we used known repeatedly sampled individuals with the most calls. We excluded ASCA_2019 as this individual had no social group members (a lone parakeet in El Paso, TX). In sum, we used 4 individuals per range with the highest numbers of calls for model training, and the introduced range birds used for training were sampled from different sites and years. 
 ```{r chunk4}
 
 nat_int_est %>%
-  filter(social_scale == "Individual") %>%
+  dplyr::filter(social_scale == "Individual") %>%
   group_by(site_year, Bird_ID) %>%
   summarise(num_calls = length(sound.files)) %>%
   ungroup()
@@ -258,13 +276,9 @@ saveRDS(xc_mat_mfcc, file.path(path, "xc_mat_nat_int_mfcc_1582calls.RDS"))
 ### Dynamic time warping similarity
 
 We measured spectral entropy and dominant frequency as time series, which we converted to similarity measurements using dynamic time warping (DTW_domf and DTW_spen). We extracted 100 time points per time series. We also performed multivariate DTW using both spectral entropy and dominant frequency time series (DTW_mult). 
-```{r chunk4, eval = FALSE}
+```{r eval = FALSE}
 
 # Extract spectral entropy across signals as a time series
-# Set img to TRUE to see time series plotted over spectrograms
-# sp_ts <- sp.en.ts(nat_int_est, wl = 378, length.out = 100, wn = "hanning", ovlp = 90, bp = c(0.5, 9), threshold = 15, img = FALSE, parallel = cores, img.suffix = "spec_ent", pb = TRUE, clip.edges = TRUE, leglab = "spec_ent", sp.en.range = c(0.5, 9), path = path, flim = c(0, 10))
-# str(sp_ts)
-
 sp_ts <- warbleR::freq_ts(nat_int_est, type = "entropy", wl = 378, length.out = 100, wn = "hanning", ovlp = 90, bp = c(0.5, 9), threshold = 15, img = FALSE, parallel = cores, img.suffix = "spec_ent", pb = TRUE, clip.edges = TRUE, leglab = "spec_ent", sp.en.range = c(0.5, 9), path = path, flim = c(0, 10))
 str(sp_ts)
 
@@ -313,9 +327,6 @@ dim(sp_ts[, sapply(sp_ts, is.numeric)])
  dim(df_ts[, sapply(df_ts, is.numeric)])
 
 # Returns distances by default
-# The first run used window.type = "none", which yielded zeroes off the diagonal
-# When using window.type = "sakoechiba" and window.size = 10, there were still zeroes off the diagonal for calls that are not duplicates (e.g 2017_05_21_PLVE_1005_10.WAV and 2017_05_21_PLVE_1005_11.WAV)
- # I retained results from window.type = "none" and adjusted zeroes off the diagonal (see)
 mDTW <- warbleR::multi_DTW(ts.df1 = sp_ts, ts.df2 = df_ts, parallel = cores, window.type = "none", open.end = FALSE, scale = TRUE, dist.mat = TRUE, path = path)
 class(mDTW)
 
@@ -494,19 +505,19 @@ Read in the SPCC and DTW similarity matrices.
 ```{r chunk10}
 
 xc_mat_spec <- readRDS(file.path(path, "xc_mat_nat_int_1582calls.RDS"))
-# dim(xc_mat_spec) == nrow(nat_int_est)
+dim(xc_mat_spec) == nrow(nat_int_est)
 
 xc_mat_ceps <- readRDS(file.path(path, "xc_mat_nat_int_mfcc_1582calls.RDS"))
-# dim(xc_mat_ceps) == nrow(nat_int_est)
+dim(xc_mat_ceps) == nrow(nat_int_est)
 
 dtw_domf <- readRDS(file.path(path, "DTW_domf_1582calls.RDS"))
-# dim(dtw_domf) == nrow(nat_int_est)
+dim(dtw_domf) == nrow(nat_int_est)
 
 dtw_spen <- readRDS(file.path(path, "DTW_spec_ent_1582calls.RDS"))
-# dim(dtw_spen) == nrow(nat_int_est)
+dim(dtw_spen) == nrow(nat_int_est)
 
 dtw_mult <- readRDS(file.path(path, "DTW_multi_1582calls.RDS"))
-# dim(dtw_mult) == nrow(nat_int_est)
+dim(dtw_mult) == nrow(nat_int_est)
 
 ```
 
@@ -517,16 +528,16 @@ Filtered similarity matrices by the individuals that were used for model trainin
 
 # Checking, looks good
 nat_int_est %>%
-  filter(social_scale == "Individual") %>%
-  filter(Bird_ID %in% train_indivs) %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  dplyr::filter(Bird_ID %in% train_indivs) %>%
   group_by(Bird_ID) %>%
   summarise(num_calls = length(sound.files))
 
 train_indivs
 
 calls <- nat_int_est %>%
-  filter(social_scale == "Individual") %>%
-  filter(Bird_ID %in% train_indivs) %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  dplyr::filter(Bird_ID %in% train_indivs) %>%
   pull(sound.files)
 
 head(calls)
@@ -623,21 +634,21 @@ invisible(pblapply(1:length(mat_list), function(x){
 
 # Sound file names do not need to be changed
 acs_params <- read.csv(file.path(path, "acoustic_parameters_1582calls.csv")) %>%
-  mutate(
+  dplyr::mutate(
     selec = as.character(selec)
   )
-# nrow(acs_params) == nrow(nat_int_est)
+nrow(acs_params) == nrow(nat_int_est)
 # glimpse(acs_params)
 
 cep_coeff <- read.csv(file.path(path, "Mel_freq_cepstral_coefficients_1582calls.csv")) %>%
-  mutate(
+  dplyr::mutate(
     selec = as.character(selec)
   )
-# nrow(cep_coeff) == nrow(nat_int_est)
+nrow(cep_coeff) == nrow(nat_int_est)
 # glimpse(cep_coeff)
 
 img_params <- read.csv(file.path(path, "image_parameters_1582calls.csv"))
-# nrow(img_params) == nrow(nat_int_est)
+nrow(img_params) == nrow(nat_int_est)
 # glimpse(img_params[, 1:10])
 
 ```
@@ -649,16 +660,16 @@ Filtered acoustic and image measurements by the individuals used for model train
 
 # Checking, looks good
 nat_int_est %>%
-  filter(social_scale == "Individual") %>%
-  filter(Bird_ID %in% train_indivs) %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  dplyr::filter(Bird_ID %in% train_indivs) %>%
   group_by(Bird_ID) %>%
   summarise(num_calls = length(sound.files))
 
 train_indivs
 
 calls <- nat_int_est %>%
-  filter(social_scale == "Individual") %>%
-  filter(Bird_ID %in% train_indivs) %>%
+  dplyr::filter(social_scale == "Individual") %>%
+  dplyr::filter(Bird_ID %in% train_indivs) %>%
   pull(sound.files)
 head(calls)
 
@@ -743,14 +754,14 @@ invisible(pblapply(1:length(mat_list), function(x){
 
 ## Extract features by MDS
 
-MDS features were extracted from similarity matrices. We did not find an "optimal" number of dimensions as in previous work. Instead, I used the largest number of MDS dimensions that I could perform on my computer. 
+MDS features were extracted from similarity matrices. We did not find an "optimal" number of dimensions as in previous work. Instead, I used the largest number of MDS dimensions that I could perform MDS with on my local computer. 
 
 Get calls for both social scales.
 ```{r chunk17, eval = FALSE}
 
 indiv_calls <- nat_int_est %>%
-  filter(social_scale == "Individual") %>%
-  mutate(
+  dplyr::filter(social_scale == "Individual") %>%
+  dplyr::mutate(
     sound.files = as.character(sound.files)
   ) %>%
   pull(sound.files)
@@ -758,8 +769,8 @@ indiv_calls <- nat_int_est %>%
 length(indiv_calls)
 
 site_calls <- nat_int_est %>%
-  filter(social_scale == "Site") %>%
-  mutate(
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::mutate(
     sound.files = as.character(sound.files)
   ) %>%
   pull(sound.files)
@@ -774,7 +785,7 @@ call_pats <- c(paste(paste("^", indiv_calls, "$", sep = ""), collapse = "|"), pa
 
 ```
 
-I performed MDS with 15 dimensions per social scale and measurement type. I did not optimize the number of MDS dimensions used per similarity method, in which optimization would have consisted of identifying the number of dimensions that yielded stress values close to 5% (Kruskal's rule of thumb for "optimal" solutions with "low" stress). Instead, I performed MDS with the largest number of dimensions I could run on my local computer with the site scale calls, and used the same number of dimensions for the individual scale calls. In previous work, in which I had optimized MDS stress for native range calls, I noticed that MDS stress was lower as the number of dimensions increased.  
+I performed MDS with 30 dimensions per social scale and measurement type. I did not optimize the number of MDS dimensions used per similarity method, in which optimization would have consisted of identifying the number of dimensions that yielded stress values close to 5% (Kruskal's rule of thumb for "optimal" solutions with "low" stress). Instead, I performed MDS with the largest number of dimensions I could run on my local computer with the site scale calls, and used the same number of dimensions for the individual scale calls. In previous work, in which I had optimized MDS stress for native range calls, I noticed that MDS stress was lower as the number of dimensions increased.  
 ```{r chunk19, eval = FALSE}
 
 mthd <- c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult")
@@ -802,7 +813,7 @@ rm(list = "mat_list")
 ```
 
 I printed MDS stress values per measurement type and social scales. Stress values are shown as percentages (see `?isoMDS`). Most stress values are close to 5% (Kruskal's rule of thumb for "low" stress), is over 10% for dominant frequency DTW similarity. Although I did not optimize the number of MDS dimensions per measurement type and social scale, I saw similar patterns in acoustic space compared to previous work in the visuals used to validate these measurements for use in random forests.
-```{r chunk20, eval = FALSE}
+```{r chunk20}
 
 mthd <- c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult")
 
@@ -851,7 +862,7 @@ invisible(pblapply(1:length(mthd), function(x){
 ```
 
 How many principal components were extracted per measurement type?
-```{r chunk23, eval = FALSE}
+```{r chunk23}
 
 mthd <- c("acs_params", "cep_coeff", "img_params")
 
@@ -881,12 +892,12 @@ mthd_nms <- list(c("SPCC - spectrogram", "SPCC - cepstral coefficients", "DTW - 
 
 # Read in the 3 tabular acoustic measurement sets to access sound file order
 acs_params <- read.csv(file.path(path, "acoustic_parameters_1582calls.csv")) %>%
-  mutate(
+  dplyr::mutate(
     selec = as.character(selec)
   )
 
 cep_coeff <- read.csv(file.path(path, "Mel_freq_cepstral_coefficients_1582calls.csv")) %>%
-  mutate(
+  dplyr::mutate(
     selec = as.character(selec)
   )
 
@@ -909,7 +920,7 @@ feat_df_list <- invisible(pblapply(1:length(dim_red), function(x){
         feats <- data.frame(iso$points)
         names(feats) <- paste(mthd[[x]][z], "MDS", seq(1, ncol(feats), 1), sep = "_")
         tmp_df <- data.frame(sound.files = sound.files, feats) %>%
-            mutate(
+            dplyr::mutate(
               sound.files = as.character(sound.files)
             )
         
@@ -924,7 +935,7 @@ feat_df_list <- invisible(pblapply(1:length(dim_red), function(x){
         
         names(feats) <- paste(mthd[[x]][z], "PCA", seq(1, ncol(feats), 1), sep = "_")
         tmp_df <- data.frame(sound.files = sound.files, feats) %>%
-          mutate(
+          dplyr::mutate(
             sound.files = as.character(sound.files)
           )
         
@@ -1046,7 +1057,7 @@ dim(sup_rf_df_SNR)
 
 # Remove calls that have NA in SNR column
 sup_rf_df_SNR <- sup_rf_df_SNR %>%
-  filter(!is.na(SNR))
+  dplyr::filter(!is.na(SNR))
 nrow(sup_rf_df_SNR)
 
 # Check for high correlations among features and SNR
@@ -1083,10 +1094,13 @@ Read back in the random forests training, validation and prediction datasets.
 ```{r chunk32}
 
 sup_rf_df <- read.csv(file.path(path, "supervised_RF_dataset_acousticSimilarity.csv")) %>%
-  mutate(
+  dplyr::mutate(
     year = as.character(year)
   )
+
 dim(sup_rf_df)
+
+names(sup_rf_df)[1:15]
 
 ```
 
@@ -1123,8 +1137,8 @@ Which individuals will be used for training?
 ```{r chunk36}
 
 t_indivs <- sup_rf_df %>%
-  filter(rf_set == "training") %>%
-  mutate(
+  dplyr::filter(rf_set == "training") %>%
+  dplyr::mutate(
     Bird_ID = as.character(Bird_ID)
   ) %>%
   pull(Bird_ID) %>%
@@ -1143,13 +1157,13 @@ Calls per training individual, including average and range. Since each training 
 
 # Number of calls per training individual
 sup_rf_df %>%
-  filter(rf_set == "training") %>%
+  dplyr::filter(rf_set == "training") %>%
   group_by(Bird_ID) %>%
   summarise(n_calls = length(sound.files)) 
 
 # Mean calls across training individuals
 sup_rf_df %>%
-  filter(rf_set == "training") %>%
+  dplyr::filter(rf_set == "training") %>%
   group_by(Bird_ID) %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls) %>%
@@ -1157,7 +1171,7 @@ sup_rf_df %>%
 
 # Range of calls across training individuals
 sup_rf_df %>%
-  filter(rf_set == "training") %>%
+  dplyr::filter(rf_set == "training") %>%
   group_by(Bird_ID) %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls) %>%
@@ -1169,20 +1183,20 @@ How many training calls? Percentage of the individual scale dataset? Percentage 
 ```{r chunk38}
 
 sup_rf_df %>%
-  filter(rf_set == "training") %>%
+  dplyr::filter(rf_set == "training") %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls)
 
 # Percentage of the individual dataset
 (sup_rf_df %>%
-  filter(rf_set == "training") %>%
+  dplyr::filter(rf_set == "training") %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls) / nrow(sup_rf_df %>%
-  filter(social_scale == "Individual"))) * 100
+  dplyr::filter(social_scale == "Individual"))) * 100
 
 # Percentage of the whole dataset across social scales
 (sup_rf_df %>%
-  filter(rf_set == "training") %>%
+  dplyr::filter(rf_set == "training") %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls) / nrow(sup_rf_df)) * 100
 
@@ -1192,8 +1206,8 @@ Which individuals will be used for validation?
 ```{r chunk39}
 
 v_indivs <- sup_rf_df %>%
-  filter(rf_set == "validation") %>%
-  mutate(
+  dplyr::filter(rf_set == "validation") %>%
+  dplyr::mutate(
     Bird_ID = as.character(Bird_ID)
   ) %>%
   pull(Bird_ID) %>%
@@ -1211,20 +1225,20 @@ How many validation calls? Percentage of the individual scale dataset? Percentag
 ```{r chunk40}
 
 sup_rf_df %>%
-  filter(rf_set == "validation") %>%
+  dplyr::filter(rf_set == "validation") %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls)
 
 # Percentage of the individual dataset
 (sup_rf_df %>%
-  filter(rf_set == "validation") %>%
+  dplyr::filter(rf_set == "validation") %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls) / nrow(sup_rf_df %>%
-  filter(social_scale == "Individual"))) * 100
+  dplyr::filter(social_scale == "Individual"))) * 100
 
 # Percentage of the whole dataset across social scales
 (sup_rf_df %>%
-  filter(rf_set == "validation") %>%
+  dplyr::filter(rf_set == "validation") %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls) / nrow(sup_rf_df)) * 100
 
@@ -1234,13 +1248,13 @@ How many calls will be used for prediction? All site scale calls will be used. P
 ```{r chunk41}
 
 sup_rf_df %>%
-  filter(rf_set == "prediction") %>%
+  dplyr::filter(rf_set == "prediction") %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls)
 
 # Percentage of the whole dataset across social scales
 (sup_rf_df %>%
-  filter(rf_set == "prediction") %>%
+  dplyr::filter(rf_set == "prediction") %>%
   summarise(n_calls = length(sound.files)) %>%
   pull(n_calls) / nrow(sup_rf_df)) * 100
 
@@ -1248,16 +1262,16 @@ sup_rf_df %>%
 
 # Random Forests Model 1
 
-A random forests model was trained using native and introduced individuals and all predictors. Model training and tuning were performed with 5 iterations of repeated 10-fold cross-validation. This was a multiclass model (e.g. 8 individuals = 8 class labels). I used the `ranger` package random forests implementation.
-```{r chunk42, eval = FALSE}
+A random forests model was trained using native and introduced individuals and all predictors. Model training and tuning were performed with 5 iterations of repeated 5-fold cross-validation. This was a multiclass model (e.g. 8 individuals = 8 class labels). I used the `ranger` package random forests implementation.
+```{r}
 
 # Initialize training data
 train_df <- sup_rf_df %>%
-  filter(rf_set == "training") %>%
+  dplyr::filter(rf_set == "training") %>%
   # Remove categorical variables that will not be used for classification
   dplyr::select(-c(sound.files, date, range, social_scale, site, region, country, site_year, year, dept_state, introduced_city, rf_set)) %>%
   # Change the symbol inside bird IDs, otherwise caret throws an error
-  mutate(
+  dplyr::mutate(
     Bird_ID = gsub("-", "_", Bird_ID)
   ) %>%
   droplevels()
@@ -1276,6 +1290,10 @@ mtry
 # Other parameters for ranger random forests
 splitrule <- "gini"
 min.node.size <- 1
+
+```
+
+```{r chunk42, eval = FALSE}
 
 # Perform model training and tuning with caret package
 
@@ -1311,6 +1329,9 @@ rf_model1
 Checking out the cross-validated confusion matrix. Some calls were misclassified but the model performed really well overall. Accuracy was 91.67% with a 95% CI of (86.17, 95.49). I made the confusion matrix by obtaining the predicted classes. Making the confusion matrix in this way yields useful summary statistics (like a 95% CI) that otherwise wouldn't show up for a multiclass model.
 ```{r chunk45}
 
+# Update the introduced range IDs in the dimension names
+dimnames(rf_model1$finalModel$predictions)[[2]] <- gsub("INV", "INT", dimnames(rf_model1$finalModel$predictions)[[2]])
+
 # Make a new confusion matrix from the predictions to get sensitivity and specificity per class
 training_res <- rf_model1$finalModel$predictions %>%
   as_tibble() %>%
@@ -1327,7 +1348,7 @@ confusionMatrix(factor(train_df$Bird_ID, levels = gsub("-", "_", t_indivs)), tra
 ```
 
 Save the final model and the training object as well.
-```{r chunk46}
+```{r chunk46, eval = FALSE}
 
 model1 <- rf_model1$finalModel
 
@@ -1374,7 +1395,7 @@ var_imp_df <- data.frame(
 
 var_imp_df <- var_imp_df %>%
   # Add in a feature type column
-  mutate(
+  dplyr::mutate(
     var_type = sapply(1:nrow(var_imp_df), function(y){
       paste(
         strsplit(as.character(var_imp_df$var_nms[y]), split = "_")[[1]][1],
@@ -1383,7 +1404,7 @@ var_imp_df <- var_imp_df %>%
       )
     })
   ) %>%
-  mutate(
+  dplyr::mutate(
     var_type = factor(var_type, levels = c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult", "acs_params", "cep_coeff", "img_params")),
     var_nms = as.character(var_nms)
   ) %>%
@@ -1391,12 +1412,11 @@ var_imp_df <- var_imp_df %>%
   slice(1:20) %>%
   # Uncomment to see features organized by importance on the y-axis too, and use forcats::fct_rev(var_nms) instead of var_nms in aes() calls below
   # I think ordered by feature type is more interpretable after all
-  # mutate(
+  # dplyr::mutate(
     # var_nms = factor(var_nms, levels = var_nms)
   # ) %>%
   droplevels()
 
-# x11()
 ggplot(data = var_imp_df) + 
   geom_segment(aes(x = 0, xend = imp, y = var_nms, yend = var_nms, color = var_type), size = 2) +
   geom_point(aes(y = var_nms, x = imp), pch = 21, fill = gray.colors(n)[2], color = "black", size = 3.5) +
@@ -1418,25 +1438,23 @@ ggplot(data = var_imp_df) +
     legend.text = element_text(size = 10),
     legend.key.width = unit(1, "lines")
   ) 
-
-# ggsave(file.path(gpath, "SupplementaryFigure11_RFModel1_VarImp.tiff"), units = "in", width = 8, height = 6, dpi = 300)
   
 ```
 
 # Random Forests Model 2
 
-Could classification performance be improved by dropping less important features? I proceeded with automatic feature selection to drop less important variables in order to build a second random forests model. I did not pursue manual feature selection as performed in previous work, in which we manually identified and dropped features that were less important than randomly generated variables<a href='#References'><sup>[1]</sup></a>. 
+Could classification performance be improved by dropping less important features? I proceeded with automatic feature selection to drop less important variables in order to build a second random forests model. I did not use manual feature selection as in previous work, in which we manually identified and dropped features that were less important than randomly generated variables<a href='#References'><sup>[1]</sup></a>. 
 
 Automatic feature selection was performed using `Boruta`, which also uses a random forests classifier.
 ```{r chunk49, eval = FALSE}
 
 # Initialize training data
 train_df <- sup_rf_df %>%
-  filter(rf_set == "training") %>%
+  dplyr::filter(rf_set == "training") %>%
   # Remove categorical variables that will not be used for classification
   dplyr::select(-c(sound.files, date, range, social_scale, site, region, country, site_year, year, dept_state, introduced_city, rf_set)) %>%
   # Change the symbol inside bird IDs, otherwise caret throws an error
-  mutate(
+  dplyr::mutate(
     Bird_ID = gsub("-", "_", Bird_ID)
   ) %>%
   droplevels()
@@ -1474,9 +1492,12 @@ auto_df <- auto_feats$ImpHistory %>%
   )
 glimpse(auto_df[1:10, ])
 
-# x11()
+```
+
+```{r eval = FALSE}
+
 ggplot(auto_df %>%
-         filter(type == "Confirmed" | type == "Tentative"), aes(y = features, x = importance, fill = type)) +
+         dplyr::filter(type == "Confirmed" | type == "Tentative"), aes(y = features, x = importance, fill = type)) +
   geom_boxplot() + 
   scale_fill_manual(values = c("firebrick", "dodgerblue")) +
   xlab("Variable Importance by Automatic Selection") + 
@@ -1508,15 +1529,15 @@ length(imp_feats)
 ```
 
 The second random forests model was trained with the same training dataset, but with only the 114 most important predictors as determined by automatic feature selection.
-```{r chunk53, eval = FALSE}
+```{r}
 
 # Initialize training data
 train_df <- sup_rf_df %>%
-  filter(rf_set == "training") %>%
+  dplyr::filter(rf_set == "training") %>%
   # Remove categorical variables that will not be used for classification
   dplyr::select(-c(sound.files, date, range, social_scale, site, region, country, site_year, year, dept_state, introduced_city, rf_set)) %>%
   # Change the symbol inside bird IDs, otherwise caret throws an error
-  mutate(
+  dplyr::mutate(
     Bird_ID = gsub("-", "_", Bird_ID)
   ) %>%
   droplevels() %>%
@@ -1540,6 +1561,10 @@ mtry
 # Other parameters for ranger random forests
 splitrule <- "gini"
 min.node.size <- 1
+
+```
+
+```{r chunk53, eval = FALSE}
 
 # Perform model training and tuning with caret package
 
@@ -1574,6 +1599,9 @@ rf_model2
 Cross-validated confusion matrix. This model performed really well overall. The final classification accuracy was 97.44% with 95% CI (93.57, 99.30).
 ```{r chunk56}
 
+# Update the introduced range IDs in the dimension names
+dimnames(rf_model2$finalModel$predictions)[[2]] <- gsub("INV", "INT", dimnames(rf_model2$finalModel$predictions)[[2]])
+
 # Make a new confusion matrix from the predictions to get sensitivity and specificity per class
 training_res <- rf_model2$finalModel$predictions %>%
   as_tibble() %>%
@@ -1583,6 +1611,7 @@ training_res <- rf_model2$finalModel$predictions %>%
     }),
     predicted_class = factor(predicted_class, levels = gsub("-", "_", t_indivs))
   )
+
 glimpse(training_res)
 
 confusionMatrix(factor(train_df$Bird_ID, levels = gsub("-", "_", t_indivs)), training_res$predicted_class)
@@ -1601,13 +1630,13 @@ mean(ba[grep("NAT", names(ba))]) # 99.00
 pracma::std_err(ba[grep("NAT", names(ba))]) # 0.01
 
 # Mean and standard error for introduced range birds
-mean(ba[grep("INV", names(ba))]) # 98.75
-std_err(ba[grep("INV", names(ba))]) # 0.0075
+mean(ba[grep("INT", names(ba))]) # 98.75
+std_err(ba[grep("INT", names(ba))]) # 0.0075
 
 ```
 
 Saved this model.
-```{r chunk58}
+```{r chunk58, eval = FALSE}
 
 model2 <- rf_model2$finalModel
 # print(model2)
@@ -1654,7 +1683,7 @@ var_imp_df <- data.frame(
 
 var_imp_df <- var_imp_df %>%
   # Add in a feature type column
-  mutate(
+  dplyr::mutate(
     var_type = sapply(1:nrow(var_imp_df), function(y){
       paste(
         strsplit(as.character(var_imp_df$var_nms[y]), split = "_")[[1]][1],
@@ -1663,7 +1692,7 @@ var_imp_df <- var_imp_df %>%
       )
     })
   ) %>%
-  mutate(
+  dplyr::mutate(
     var_type = factor(var_type, levels = c("SPCC_spec", "SPCC_ceps", "DTW_domf", "DTW_spen", "DTW_mult", "acs_params", "cep_coeff", "img_params")),
     var_nms = as.character(var_nms)
   ) %>%
@@ -1673,7 +1702,6 @@ var_imp_df <- var_imp_df %>%
 
 glimpse(var_imp_df)
 
-x11()
 ggplot(data = var_imp_df) + 
   geom_segment(aes(x = 0, xend = imp, y = var_nms, yend = var_nms, color = var_type), size = 2) +
   geom_point(aes(y = var_nms, x = imp), pch = 21, fill = gray.colors(n)[2], color = "black", size = 3.5) +
@@ -1708,7 +1736,7 @@ model2 <- readRDS(file.path(path, "ranger_model2.RDS"))
 
 # Random forests datasets (training, validation, prediction)
 sup_rf_df <- read.csv(file.path(path, "supervised_RF_dataset_acousticSimilarity.csv")) %>%
-  mutate(
+  dplyr::mutate(
     year = as.character(year)
   )
 glimpse(sup_rf_df[, 1:20])
@@ -1716,7 +1744,7 @@ glimpse(sup_rf_df[, 1:20])
 ```
 
 Get the validation and prediction datasets.
-```{r chunk62, eval = FALSE}
+```{r chunk62}
 
 # Get validation calls
 vp_df <- sup_rf_df %>%
@@ -1764,10 +1792,10 @@ str(vp_prox_mat)
 ```
 
 Model validation was performed by running Gaussian mixture modelling (or model-based clustering) on the random forests proximity matrix to assess how well random forests similarity represented patterns of individual consistency and distinctiveness. Here, the Gaussian mixture models were not given a number of mixture components (e.g. a number of optimal clusters), so these models yielded the "optimal"" number of clusters found.
-```{r chunk65}
+```{r}
 
 v_calls <- sup_rf_df %>%
-  filter(rf_set == "validation") %>%
+  dplyr::filter(rf_set == "validation") %>%
   pull(sound.files)
   
 length(v_calls) # 73
@@ -1808,7 +1836,7 @@ shps <- c(21, 22, 24, 23, 21, 23, 24, 22, 25)
 ### Validation results
 
 Perform MDS on the random forests proximity matrix to visualize calls in 2D random forests space.
-```{r chunk67}
+```{r}
 
 # Read in clustering results
 mclust_res <- readRDS(file.path(path, "mclust_res_validatn_free.RDS"))
@@ -1822,8 +1850,8 @@ iso <- invisible(MASS::isoMDS(dist_mat, k = 2, maxit = 1000, trace = FALSE))
 # str(iso)
   
 bird_ids <- vp_df %>%
-  filter(rf_set == "validation") %>% 
-  mutate(
+  dplyr::filter(rf_set == "validation") %>% 
+  dplyr::mutate(
     Bird_ID = as.character(Bird_ID),
     sy_Bird_ID = paste(site_year, Bird_ID, sep = " - ")
   ) %>%
@@ -1832,7 +1860,7 @@ bird_ids <- vp_df %>%
 unique(bird_ids)
   
 rf_mds_df <- data.frame(X = iso$points[, 1], Y = iso$points[, 2]) %>%
-  mutate(
+  dplyr::mutate(
     indiv = bird_ids, 
     cluster = factor(as.character(mclust_res$classification))
     )
@@ -1844,8 +1872,6 @@ rf_mds_df$indiv <- factor(rf_mds_df$indiv, levels = unique(bird_ids))
 hulls <- plyr::ddply(rf_mds_df, "indiv", function(x){
   x[chull(x$X, x$Y), ]
 })
-
-x11()
 
 ggplot(rf_mds_df, aes(x = X, y = Y)) + 
   
@@ -1886,9 +1912,9 @@ ggplot(rf_mds_df, aes(x = X, y = Y)) +
 
 Only a single call was misclassified for the native range. Clustering with random forests similarity yielded lower classification accuracy for the introduced range. As in the native range, birds from different sites overlapped in acoustic space, but some of these calls from individuals recorded at different sites were clustered together. Notably, ELEM_2019 INT-UM9 and SOCC_2019 INT-UM16 were close in acoustic space and had calls assigned to the same cluster. Also, while SOCC_2019 INT-UM16 and the other individual recorded at that site, SOCC_2019 INT-UM17, did not overlap visibly in acoustic space, one call for UM16 was assigned to the same cluster as most of the calls for UM17. Calls for these two individuals were certainly visibly similar. Finally, the clear separation of calls from the two ranges reflected our findings of simplified frequency modulation patterns in introduced range calls<a href='#References'><sup>[3]</sup></a>. 
 
-Overall, our native range validation results from our previous work were replicated here<a href='#References'><sup>[1]</sup></a>, and the patterns of overlap among introduced range individuals in acoustic space were similar to native range individuals.
+Overall, our native range validation results from our previous work were reproduced here<a href='#References'><sup>[1]</sup></a>, and the patterns of overlap among introduced range individuals in acoustic space were similar to native range individuals.
 
-Model validation yielded biologically relevant patterns, so I proceeded by using the SPCC and random forests similarity matrices for visualizations and Mantel tests. Since I extracted a proximity matrix for the individual scale validation calls and site scale calls together, all subsequent acoustic space visualizations made with the random forests proximity matrix can be interpreted along the same axes.
+Model validation yielded biologically relevant patterns, so I proceeded by using the SPCC and random forests similarity matrices for visualizations and subsequent analyses. Since I extracted a proximity matrix for the individual scale validation calls and site scale calls together, all following acoustic space visualizations made with the random forests proximity matrix can be interpreted along the same axes.
 
 # References
 
@@ -1898,6 +1924,7 @@ Model validation yielded biologically relevant patterns, so I proceeded by using
     
     3. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
     
+Documenting session information and software versions at the time of knitting the RMarkdown output.
 ```{r chunk67}
 
 sessionInfo()

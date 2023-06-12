@@ -1,20 +1,20 @@
 ---
-title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 07:</center>
-subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Earth Mover's Distance</center>
- &nbsp;
+title: "Identity Encoding Code 07:"
+subtitle: "Earth Mover's Distance"
 author: |
+  <hr>
   <center style="font-style:normal;">
   <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
-  &nbsp;
+  <br>
+  <br>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
-  <br />
+  <br>
   <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
-  &nbsp;
-date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
-  <br />
+  <br>
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
     toc: true
@@ -29,42 +29,50 @@ a:hover {
   color: #23527c !important;
 }
 
-h1.title {
+h1.title { /* Document title */
   font-size: 32px;
   color: black;
   font-weight: normal;
+  text-align: center;
 }
 
 h1 {
-   color: black;
+   color: #0E0E7D;
    font-size: 26px;
    font-weight: normal;
 }
 
 h2 {
-   color: black;
+   color: #0E0E7D;
    font-size: 24px;
    font-weight: bold;
 }
 
-h3 {
-   color: black;
-   font-size: 20px;
+h3 { /* Document subtitle */
+   color: #0E0E7D;
+   font-size: 28px;
    font-weight: normal;
+   text-align: center;
 }
 
 h4 {
-   color: black;
+   color: #0E0E7D;
    font-size: 20px;
    font-weight: normal;
 }
 
+h4.date { /* Date in document header */
+  font-size: 22px;
+  font-style:normal;
+  text-align: center;
+}
+
 body{ /* Normal */
-      font-size: 18px;
+      font-size: 20px;
   }
   
 code.r{ /* Code block */
-    font-size: 18px;
+    font-size: 20px;
 }
 </style>
 
@@ -76,9 +84,17 @@ knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity
 
 ```
 
-We used Earth Mover's Distance<a href='#References'><sup>[1]</sup></a> to quantify the strength of acoustic convergence at each social scale for native and introduced range monk parakeet calls. This analysis is based on thinking about distributions of similarity values within and among categories at each social scale as two features of convergence.
+<hr>
 
-We calculated this distance metric between distributions of similarity values within versus among categories at a given social scale (e.g. within versus among individuals at the individual scale). To do this, we use a histogram-based approach to create signatures that are compared between the distributions. Since we did not have **a priori** expectations for an optimal number of bins to use, we iterate over different numbers of bins to calculate Earth Mover's Distance. For each number of total bins, we also randomly sample an equivalent number of similarity values from each distribution over various iterations.
+This code accompanies the following paper in PLOS Computational Biology:
+
+Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. Individual identity information persists in learned calls of introduced parrot populations.
+
+<hr>
+
+We used Earth Mover's Distance<a href='#References'><sup>[3]</sup></a> to quantify the strength of acoustic convergence at each social scale for native and introduced range monk parakeet calls. This analysis is based on considering the distributions of similarity values within and among categories at each social scale as two quantifiable features of acoustic convergence.
+
+I calculated this distance metric between distributions of similarity values within versus among categories at a given social scale (e.g. within versus among individuals at the individual scale). To do this, we use a histogram-based approach to create "signatures" or clusters that are compared between the distributions. Since we did not have *a priori* expectations for an optimal number of bins to use, we iterated over different numbers of bins to calculate Earth Mover's Distance. For each number of total bins, we also randomly sampled an equivalent number of similarity values from each distribution over various iterations.
 
 For our comparisons of hierarchical mapping patterns between ranges, we calculated Earth Mover's Distance among a set of representative individuals in each of the native and introduced ranges for the individual scale with spectrographic cross-correlation (SPCC) similarity. For the site scale we used the 3 datasets that accounted for repeated sampling of unmarked individuals, as well as both random forests and SPCC similarity. Finally, we used Earth Mover's Distance to quantify the strength of acoustic convergence over time at the site scale (including all 3 datasets and both similarity methods) for the introduced range. See the methods and appendix of the associated publication for more information about these analyses.
 
@@ -86,10 +102,10 @@ Check out Github repositories from previous work for related analyses and code:
 
 - [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
 
-- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[4]</sup></a>
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[2]</sup></a>
   
 Please cite the associated papers as well as our code (see DOIs on GitHub) if the code or analyses across these repositories are useful for your own research.
-```{r echo = TRUE, eval = TRUE, message = FALSE}
+```{r message = FALSE, warning = FALSE}
 
 rm(list = ls())
 
@@ -102,7 +118,6 @@ options(dplyr.summarise.inform = FALSE)
 
 path <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Data"
 gpath <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Graphics"
-seed <- 401
 cores <- parallel::detectCores() - 2
 
 # Source customized functions:
@@ -115,18 +130,18 @@ source("/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduc
 
 ```
 
-Read in extended selection table (EST). Metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales. 
-```{r echo = TRUE, eval = TRUE}
+Read in the extended selection table (EST). This contains metadata and wave objects for pre-processed native and introduced range monk parakeet contact calls across the individual and site scales. 
+```{r}
 
 nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
-glimpse(nat_int_est)
+# glimpse(nat_int_est)
 
 ```
 
 # Filtering out some calls
 
 I dropped individual scale calls that had been added to the site scale (1 call per known repeatedly sampled individual in the final individual scale dataset, suffix "site_scale").
-```{r chunk3}
+```{r}
 
 # 31 calls with the suffix "_site_scale". Not all of these belonged to the individuals in the final individual scale dataset, since some individuals that we repeatedly sampled were dropped due to low sample sizes after pre-processing
 nat_int_est %>%
@@ -155,11 +170,11 @@ drop_is_calls <- nat_int_est %>%
 length(drop_is_calls)
 
 # Checking, looks good
-nat_int_est %>%
-  as_tibble() %>% 
-  dplyr::filter(sound.files %in% drop_is_calls) %>%
-  dplyr::select(sound.files, Bird_ID) %>%
-  kable(align = rep("c", nrow(.)))
+# nat_int_est %>%
+#   as_tibble() %>% 
+#   dplyr::filter(sound.files %in% drop_is_calls) %>%
+#   dplyr::select(sound.files, Bird_ID) %>%
+#   kable(align = rep("c", nrow(.)))
 
 # Drop these calls from the extended selection table and continue with analyses
 nat_int_est <- nat_int_est %>%
@@ -167,54 +182,28 @@ nat_int_est <- nat_int_est %>%
 
 # 1582 calls remain out of the original 1596 calls read in above
 dim(nat_int_est)
-
-```
-
-# Individual scale
-
-DEPCRECATE THIS SAMPLE SIZE SECTION....this was just for Mantel tests...
-We used 5 native range and 5 introduced range individuals for Mantel tests at the individual scale. Although these native range individuals were sampled at a single site (site 1145 sampled in 2017), and the introduced range individuals sampled at 3 sites (city of Austin in 2019), a previous validation analysis found that these individuals represented similar patterns of acoustic variation (CITE). As geographic distance increases, individuals overlap more in acoustic space (CITE). Aside from the introduced range individuals recorded in Austin, most introduced range individuals were recorded over very large geographic distances. As such, we used native range birds from site 1145 and introduced range birds from Austin 2019 for the fairest comparison possible of individual signatures in our dataset. 
-
-Number of calls per native range individual at site 1145.
-```{r echo = TRUE, eval = TRUE}
-
-nat_int_est %>%
-  dplyr::filter(social_scale == "Individual") %>%
-  dplyr::filter(range == "Native") %>%
-  dplyr::filter(site == "1145") %>%
-  group_by(Bird_ID) %>%
-  dplyr::summarise(n_calls = length(sound.files))
-
-```
-
-Number of calls per native range individual recorded in Austin 2019. 
-```{r echo = TRUE, eval = TRUE}
-
-nat_int_est %>%
-  dplyr::filter(social_scale == "Individual") %>%
-  dplyr::filter(range == "Introduced") %>%
-  dplyr::filter(introduced_city == "Austin" & year == 2019) %>%
-  group_by(Bird_ID) %>%
-  dplyr::summarise(n_calls = length(sound.files))
+glimpse(nat_int_est)
 
 ```
 
 Read in similarity matrices.
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 # Spectrographic cross-correlation (SPCC)
 xc_mat_spec <- readRDS(file.path(path, "xc_mat_nat_int_1582calls.RDS"))
 dim(xc_mat_spec) == nrow(nat_int_est)
 glimpse(xc_mat_spec)
 
-# Read in random forests similarity (proximity matrix) for the validation and prediction call datasets
+# Random forests similarity (proximity matrix) for the validation and prediction call datasets
 vp_prox_mat <- readRDS(file.path(path, "rf_validatn_predictn_prox_mat.RDS"))
 glimpse(vp_prox_mat)
 
 ```
 
+# Range comparison, individual scale
+
 Calculate Earth Mover's Distance for the individual scale in each of the native and introduced ranges.
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 # Iterate over ranges to perform these calculations
 ranges <- c("Native", "Introduced")
@@ -254,6 +243,13 @@ invisible(pblapply(1:length(ranges), function(k){
   
   # glimpse(calls_df)
   
+  # Checking sample sizes, looks good
+  # calls_df %>%
+  #   group_by(Bird_ID) %>%
+  #   dplyr::summarise(
+  #     n_calls = n()
+  #   )
+
   # For each range, iterate over resampling iterations (5 randomly sampled individuals and 5 randomly sampled calls per individual, all without replacement)
   
   lapply(1:iteratns, function(p){
@@ -310,7 +306,7 @@ invisible(pblapply(1:length(ranges), function(k){
     # r_calls_tmp_df %>%
     #   group_by(Bird_ID) %>%
     #   dplyr::summarise(n_calls = n())
-    # 
+
     # Then get all of the calls for the given iteration
     calls <- r_calls_tmp_df %>%
       pull(sound.files)
@@ -321,7 +317,7 @@ invisible(pblapply(1:length(ranges), function(k){
     # Get the similarity values representing all unique pairwise comparisons within and among individuals for these calls
     tmp_sim_df <- extract_simValues(sim_mat = xc_mat_spec, calls = calls, species = "monk parakeet", social_scale = "Individual", dataset = NA, similarity_method = "SPCC", city_year = NA, metadata_df = nat_int_est, analysis_type = "EMD")
     
-    # 250 among values and 50 within...for the random sampling below in the Earth Mover's Distance calculations, looks good
+    # 250 among values and 50 within values for the random sampling below in the Earth Mover's Distance calculations, looks good
     # tmp_sim_df %>%
     #   group_by(type) %>%
     #   dplyr::summarise(
@@ -331,7 +327,7 @@ invisible(pblapply(1:length(ranges), function(k){
     # glimpse(tmp_sim_df)
     
     # Do the Earth Mover's Distance calculations over bin numbers and resampling
-    emd_res_df <- resampled_earthMoversDistance(sim_df = tmp_sim_df, social_scale = "Individual", range = rng, dataset = NA, similarity_method = "SPCC", city_year = NA, distr_types = distr_types, total_bins = total_bins, bounds = bounds)
+    emd_res_df <- resampled_earthMoversDistance(sim_df = tmp_sim_df, distr_types = distr_types, total_bins = total_bins, bounds = bounds)
     
     # glimpse(emd_res_df)
     
@@ -358,24 +354,27 @@ invisible(pblapply(1:length(ranges), function(k){
 
 ```
 
-# Site scale
+# Range comparison, site scale
 
 Read in the 3 site scale datasets.
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 site_scale_nf <- readRDS(file.path(path, "site_scale_nf.RDS"))
-glimpse(site_scale_nf)
+# glimpse(site_scale_nf)
+dim(site_scale_nf)
 
 site_scale_cf <- readRDS(file.path(path, "site_scale_cf.RDS"))
-glimpse(site_scale_cf)
+# glimpse(site_scale_cf)
+dim(site_scale_cf)
 
 site_scale_vf <- readRDS(file.path(path, "site_scale_vf.RDS"))
-glimpse(site_scale_vf)
+# glimpse(site_scale_vf)
+dim(site_scale_vf)
 
 ```
 
 Calculate Earth Mover's Distance for the site scale in each of the native and introduced ranges, as well as across site scale datasets and similarity methods.
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 # Iterate over ranges, site scale datasets, and similarity methods to perform these calculations
 ranges <- c("Native", "Introduced")
@@ -398,6 +397,7 @@ total_bins <- 2 ^ seq(1, 6, 1)
 bounds <- c(0, 1)
 
 # The number of randomly sampled sites and calls per site
+# All native and introduced range sites had 5 or more calls
 rn <- 5
 
 # A txt file will be populated by appending results
@@ -405,7 +405,7 @@ file_nm <- "resampled_EMD_site_scale.txt"
 
 file.remove(file.path(path, file_nm)) # remove previous versions as needed
 
-# k <- 1 # Testing
+# k <- 2 # Testing
 # s <- 1
 # z <- 1
 invisible(pblapply(1:length(ranges), function(k){
@@ -422,14 +422,13 @@ invisible(pblapply(1:length(ranges), function(k){
       rng <- ranges[k]
       
       tmp_df <- ss_df %>% 
-        # dats %>%
         dplyr::filter(range == rng) %>%
         droplevels()
       
       # glimpse(tmp_df)
       # unique(tmp_df$range)
       
-      # For each range, iterate over resampling iterations (5 randomly sampled individuals and 5 randomly sampled calls per individual, all without replacement)
+      # For each range, iterate over resampling iterations (5 randomly sampled sites and 5 randomly sampled calls per site, all without replacement)
       
       lapply(1:iteratns, function(p){
         
@@ -509,7 +508,7 @@ invisible(pblapply(1:length(ranges), function(k){
         #   )
         
         # Do the Earth Mover's Distance calculations over bin numbers and resampling
-        emd_res_df <- resampled_earthMoversDistance(sim_df = tmp_sim_df, social_scale = "Site", range = rng, dataset = data_subset[z], similarity_method = sim_meth[s], city_year = NA, distr_types = distr_types, total_bins = total_bins, bounds = bounds)
+        emd_res_df <- resampled_earthMoversDistance(sim_df = tmp_sim_df, distr_types = distr_types, total_bins = total_bins, bounds = bounds)
         
         # glimpse(emd_res_df)
         
@@ -540,8 +539,10 @@ invisible(pblapply(1:length(ranges), function(k){
 
 ```
 
-Read in the Earth Mover's distance results.
-```{r echo = TRUE, eval = TRUE}
+## Range comparison results
+
+Read in the Earth Mover's distance results across social scales, ranges, site scale datasets, and similarity methods.
+```{r}
 
 emd_res <- read.table(file.path(path, "resampled_EMD_individual_scale.txt"), sep = ",", header = TRUE) %>%
   bind_rows(
@@ -556,6 +557,8 @@ emd_res <- read.table(file.path(path, "resampled_EMD_individual_scale.txt"), sep
 
 glimpse(emd_res)
 
+table(emd_res$range, emd_res$total_bins)
+
 # For the individual scale: 2 ranges, 100 resampling iterations, 6 total bin values. This should have 1200 rows, looks good
 emd_res %>% 
   dplyr::filter(social_scale == "Individual") %>% 
@@ -566,22 +569,18 @@ emd_res %>%
   dplyr::filter(social_scale == "Site") %>% 
   nrow()
 
-# emd_res %>%
-#   distinct(range, social_scale, similarity_method, dataset, iter) %>% 
-#   View()
-
-# Also looks good (the number of similarity values used for each distribution in EMD calculations)
+# Also looks good: the number of similarity values used for each distribution in EMD calculations
 emd_res %>%
   distinct(n_within, n_among)
 
 ```
 
-Summarize the Earth Mover's Distance results across social scales.
-```{r echo = TRUE, eval = TRUE}
+Summarize the Earth Mover's Distance results across social scales. Validation figures for the appendix.
+```{r}
 
-glimpse(emd_res)
+# glimpse(emd_res)
 
-# First check how consistent the EMD results are across resampling iterations as well as bins. More consistency in the native range compared to the introduced range, and this may well be due to geography spread in the introduced range individual scale sampling (e.g. more likely that individuals far apart will develop similar individual signatures)
+# First check how consistent the EMD results are across resampling iterations as well as bins
 
 # Individual scale
 emd_res %>% 
@@ -611,7 +610,7 @@ emd_res %>%
     panel.grid.minor = element_blank()
   )
 
-# If results are consistent across bins within resampling iterations, then select one bin number and summarise across iterations to get means and 95% CIs across social scales, ranges, datasets, similarity methods. Make plots for the supplementary materials
+# If results are consistent across bins within resampling iterations, then select one bin number and summarise across iterations to get means and 95% CIs across social scales, ranges, datasets, similarity methods. Make plots for the appendix
 
 # Individual scale: results for all bins summarized across resampling iterations. Coloring the results to highlight the bin number used in the main table
 emd_res %>%
@@ -645,7 +644,7 @@ emd_res %>%
     panel.grid.minor = element_blank()
   )
 
-ggsave(file.path(gpath, "HierarchicalMapping_EMD_binSummary_IndivScale.tiff"), units = "in", width = 5, height = 2.5, dpi = 300) 
+# ggsave(file.path(gpath, "HierarchicalMapping_EMD_binSummary_IndivScale.tiff"), units = "in", width = 5, height = 2.5, dpi = 300) 
 
 # Site scale: results for all bins summarized across resampling iterations. Also coloring the results to highlight the bin number used in the main table
 emd_res %>%
@@ -683,9 +682,14 @@ emd_res %>%
     panel.grid.minor = element_blank()
   )
 
-ggsave(file.path(gpath, "HierarchicalMapping_EMD_binSummary_SiteScale.tiff"), units = "in", width = 7.5, height = 5, dpi = 300) 
+# ggsave(file.path(gpath, "HierarchicalMapping_EMD_binSummary_SiteScale.tiff"), units = "in", width = 7.5, height = 5, dpi = 300) 
 
-# Use an intermediate bin number since results are consistent across bins (within sampling iterations). I decided to go with 16 bins for the results that will go into a table in the main ms
+```
+
+Make a figure and table for the main text after validation. Use a single total bin number for results here.
+```{r}
+
+# Use an intermediate bin number since results are consistent across bins (within sampling iterations). I decided to go with 16 bins for the results that will go into a main table
 
 emd_res %>% 
   pull(total_bins) %>% 
@@ -733,9 +737,9 @@ ggplot(data = sum_stats_df,
   scale_x_discrete(labels = c("SPCC", "Random Forests", "SPCC")) +
   # Add horizontal lines and labels to annotate social scales 
   # Annotation line above the individual scale results
-  geom_segment(aes(x = 0.45, xend = 1.55, y = 0.19, yend = 0.19), color = "black", linetype = "solid", size = 0.15) +
+  geom_segment(aes(x = 0.45, xend = 1.55, y = 0.19, yend = 0.19), color = "black", linetype = "solid", linewidth = 0.15) +
   # Annotation line above the site scale results
-  geom_segment(aes(x = 1.75, xend = 3.25, y = 0.19, yend = 0.19), color = "black", linetype = "solid", size = 0.15) +
+  geom_segment(aes(x = 1.75, xend = 3.25, y = 0.19, yend = 0.19), color = "black", linetype = "solid", linewidth = 0.15) +
   # Annotation text above the individual scale results
   annotate("text", x = 1, y = 0.225, label = "Individual\nscale", size = 3.5) + 
   # Annotation text above the site scale results
@@ -752,7 +756,7 @@ ggplot(data = sum_stats_df,
     axis.text.x = element_text(size = 11)
   )
 
-ggsave(file.path(gpath, "HierarchicalMapping_RangeComparison_EarthMoversDist.jpeg"), units = "in", width = 6.5, height = 2)
+# ggsave(file.path(gpath, "HierarchicalMapping_RangeComparison_EarthMoversDist.jpeg"), units = "in", width = 6.5, height = 2)
 
 # Making a table to be used in the main text
 emd_res %>% 
@@ -767,23 +771,24 @@ emd_res %>%
   dplyr::arrange(.,
     social_scale, similarity_method, range, dataset
   ) %>%
-  dplyr::select(social_scale, similarity_method, range, dataset, mean, l_CI, u_CI, total_bins) 
-# %>% 
-  # kable(align = "c")
+  dplyr::select(social_scale, similarity_method, range, dataset, mean, l_CI, u_CI, total_bins) %>% 
+  kable(align = "c")
 
 
 ```
 
+# Introduced range temporal analysis
+
 Calculate Earth Mover's Distance for the site scale in the introduced range over time. This calculation should also be performed for each site scale dataset and similarity method in each city and year of interest.
 
-Read in the 3 site scale datasets for temporal comparisons.
-```{r echo = TRUE, eval = TRUE}
+Read in the 3 site scale datasets for temporal comparisons and show sample sizes over time per city.
+```{r}
 
 site_scale_nf_temp <- readRDS(file.path(path, "site_scale_nf_temp.RDS"))
 glimpse(site_scale_nf_temp)
 
 site_scale_nf_temp %>% 
-  group_by(year) %>% 
+  group_by(year, introduced_city) %>% 
   dplyr::summarise(
     n = n()
   )
@@ -792,7 +797,7 @@ site_scale_cf_temp <- readRDS(file.path(path, "site_scale_cf_temp.RDS"))
 glimpse(site_scale_cf_temp)
 
 site_scale_cf_temp %>% 
-  group_by(year) %>% 
+  group_by(year, introduced_city) %>% 
   dplyr::summarise(
     n = n()
   )
@@ -801,15 +806,77 @@ site_scale_vf_temp <- readRDS(file.path(path, "site_scale_vf_temp.RDS"))
 glimpse(site_scale_vf_temp)
 
 site_scale_vf_temp %>% 
-  group_by(year) %>% 
+  group_by(year, introduced_city) %>% 
   dplyr::summarise(
     n = n()
   )
 
 ```
 
-Here I randomly sampled 5 calls per site with more than 5 calls but I randomly sampled 2 sites per city-year given that we generally did not sample 5 different sites in each city-year.
-```{r echo = TRUE, eval = FALSE}
+Did all sites per dataset, year, and city have 5 calls? Checking sample sizes used for the analyses below.
+```{r}
+
+# Yes for the full dataset
+site_scale_nf_temp %>% 
+  group_by(year, introduced_city, site) %>% 
+  dplyr::summarise(
+    n = n()
+  ) %>% 
+  dplyr::filter(n < 5)
+
+# The number of sites used per year for the full dataset
+site_scale_nf_temp %>% 
+  group_by(year, introduced_city, site) %>% 
+  dplyr::summarise(
+    n = n()
+  ) %>% 
+  dplyr::filter(n >= 5) %>% 
+  dplyr::summarise(
+    n_sites = length(site)
+  )
+
+# For the clustering-filtered dataset, this sample size restriction led to dropping 1 site in each city in 2004, and 1 in Austin in 2019
+site_scale_cf_temp %>% 
+  group_by(year, introduced_city, site) %>% 
+  dplyr::summarise(
+    n = n()
+  ) %>% 
+  dplyr::filter(n < 5)
+
+# The number of sites used per year for the clustering-filtered dataset
+site_scale_cf_temp %>% 
+  group_by(year, introduced_city, site) %>% 
+  dplyr::summarise(
+    n = n()
+  ) %>% 
+  dplyr::filter(n >= 5) %>% 
+  dplyr::summarise(
+    n_sites = length(site)
+  )
+
+# For the visual classification-filtered dataset, this sample size restriction led to dropping 1 site in New Orleans in 2004, and 1 site in Austin in 2019
+site_scale_vf_temp %>% 
+  group_by(year, introduced_city, site) %>% 
+  dplyr::summarise(
+    n = n()
+  ) %>% 
+  dplyr::filter(n < 5)
+
+# The number of sites used per year for the visual classification-filtered dataset
+site_scale_vf_temp %>% 
+  group_by(year, introduced_city, site) %>% 
+  dplyr::summarise(
+    n = n()
+  ) %>% 
+  dplyr::filter(n >= 5) %>% 
+  dplyr::summarise(
+    n_sites = length(site)
+  )
+
+```
+
+Here I randomly sampled 5 calls per site with more than 5 calls but I randomly sampled 2 sites per city-year here, given that we generally did not sample 5 different sites in each city-year.
+```{r eval = FALSE}
 
 # Iterate over cities, years, site scale datasets, and similarity methods to perform these calculations
 
@@ -851,7 +918,7 @@ file_nm <- "resampled_EMD_site_scale_introducedTemporal.txt"
 
 file.remove(file.path(path, file_nm)) # remove previous versions as needed
 
-# y <- 3 # Testing
+# y <- 1 # Testing
 # m <- 1
 # s <- 1
 # z <- 1
@@ -879,7 +946,7 @@ invisible(pblapply(1:length(cities), function(m){
         # Checking, looks good
         # tmp_df %>%
           # distinct(range, introduced_city, year)
-        
+
         # For each range, iterate over resampling iterations (5 randomly sampled individuals and 5 randomly sampled calls per individual, all without replacement)
         lapply(1:iteratns, function(p){
           
@@ -951,7 +1018,7 @@ invisible(pblapply(1:length(cities), function(m){
           
           # glimpse(tmp_sim_df)
           
-          # 25 among values and 20 within...for the random sampling below in the Earth Mover's Distance calculations, looks good
+          # 25 among values and 20 within values for the random sampling below in the Earth Mover's Distance calculations, looks good
           # tmp_sim_df %>%
           #   group_by(type) %>%
           #   dplyr::summarise(
@@ -959,7 +1026,7 @@ invisible(pblapply(1:length(cities), function(m){
           #   )
 
           # Do the Earth Mover's Distance calculations over bin numbers and resampling
-          emd_res_df <- resampled_earthMoversDistance(sim_df = tmp_sim_df, social_scale = "Site", range = unique(tmp_df$range), dataset = data_subset[z], similarity_method = sim_meth[s], city_year = unique(tmp_sim_df$city_year), distr_types = distr_types, total_bins = total_bins, bounds = bounds)
+          emd_res_df <- resampled_earthMoversDistance(sim_df = tmp_sim_df, distr_types = distr_types, total_bins = total_bins, bounds = bounds)
           
           # glimpse(emd_res_df)
           
@@ -993,8 +1060,10 @@ invisible(pblapply(1:length(cities), function(m){
 
 ```
 
+## Temporal comparison results
+
 Read in the Earth Mover's distance results for the temporal introduced range analysis.
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 emd_res <- read.table(file.path(path, "resampled_EMD_site_scale_introducedTemporal.txt"), sep = ",", header = TRUE) %>%
   dplyr::mutate(
@@ -1041,10 +1110,10 @@ emd_res %>%
 
 ```
 
-Summarize the Earth Mover's distance results for this temporal analysis.
-```{r echo = TRUE, eval = TRUE}
+Summarize the Earth Mover's distance results for this temporal analysis. Make validation figures.
+```{r}
 
-glimpse(emd_res)
+# glimpse(emd_res)
 
 # First check how consistent the EMD results are across resampling iterations as well as bins
 
@@ -1075,8 +1144,6 @@ emd_res %>%
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank()
   )
-
-# If results are consistent across bins within resampling iterations, then select one bin number and summarise across iterations to get means and 95% CIs across datasets and similarity methods for each city-year. Make plots for the supplementary materials
 
 # Austin: results for all bins summarized across resampling iterations. Also coloring the results to highlight the bin number used in the main table
 emd_res %>%
@@ -1113,7 +1180,7 @@ emd_res %>%
     panel.grid.minor = element_blank()
   )
 
-ggsave(file.path(gpath, "HierarchicalMapping_EMD_binSummary_AustinTemporal.tiff"), units = "in", width = 7.5, height = 5, dpi = 300) 
+# ggsave(file.path(gpath, "HierarchicalMapping_EMD_binSummary_AustinTemporal.tiff"), units = "in", width = 7.5, height = 5, dpi = 300) 
 
 
 # New Orleans: results for all bins summarized across resampling iterations. Also coloring the results to highlight the bin number used in the main table
@@ -1151,11 +1218,14 @@ emd_res %>%
     panel.grid.minor = element_blank()
   )
 
-ggsave(file.path(gpath, "HierarchicalMapping_EMD_binSummary_NewOrleansTemporal.tiff"), units = "in", width = 7.5, height = 5, dpi = 300) 
+# ggsave(file.path(gpath, "HierarchicalMapping_EMD_binSummary_NewOrleansTemporal.tiff"), units = "in", width = 7.5, height = 5, dpi = 300) 
 
+```
+
+Make a figure and table of results for the main text.
+```{r}
 
 # Use an intermediate bin number since results are consistent across bins (within sampling iterations). I'm using 16 bins for the results that will go into another table in the main ms
-
 
 # Make a plot for the main text
 sum_stats_temp_df <- emd_res %>% 
@@ -1192,7 +1262,7 @@ ggplot() +
   geom_line(data = sum_stats_temp_df %>%
               dplyr::filter(city == "Austin") %>% 
               dplyr::filter(dataset == "Full"),
-            aes(x = year, y = mean, linetype = similarity_method, group = similarity_method), color = clrs, size = 0.75) +
+            aes(x = year, y = mean, linetype = similarity_method, group = similarity_method), color = clrs, linewidth = 0.75) +
   geom_point(data = sum_stats_temp_df %>% 
                dplyr::filter(city == "Austin") %>%
                dplyr::filter(dataset == "Full"),
@@ -1224,14 +1294,14 @@ ggplot() +
     axis.text = element_text(size = 12)
   )
 
-ggsave(file.path(gpath, "HierarchicalMapping_AustinTemporalComparison_EarthMoversDist.jpeg"), units = "in", width = 3, height = 2)
+# ggsave(file.path(gpath, "HierarchicalMapping_AustinTemporalComparison_EarthMoversDist.jpeg"), units = "in", width = 3, height = 2)
 
 # A separate plot for New Orleans that shows 2 sampling years
 ggplot() +
   geom_line(data = sum_stats_temp_df %>%
               dplyr::filter(city == "New Orleans") %>% 
               dplyr::filter(dataset == "Full"),
-            aes(x = year, y = mean, linetype = similarity_method, group = similarity_method), color = clrs, size = 0.75) +
+            aes(x = year, y = mean, linetype = similarity_method, group = similarity_method), color = clrs, linewidth = 0.75) +
   geom_point(data = sum_stats_temp_df %>% 
                dplyr::filter(city == "New Orleans") %>%
                dplyr::filter(dataset == "Full"),
@@ -1261,12 +1331,9 @@ ggplot() +
     strip.background = element_blank(),
     strip.text = element_blank(),
     axis.text = element_text(size = 12)
-    # Removing y-axis labels and ticks because these are the same as the plot for Austin
-    # axis.text.y = element_blank(),
-    # axis.ticks.y = element_blank()
   )
 
-ggsave(file.path(gpath, "HierarchicalMapping_NewOrleansTemporalComparison_EarthMoversDist.jpeg"), units = "in", width = 2, height = 2)
+# ggsave(file.path(gpath, "HierarchicalMapping_NewOrleansTemporalComparison_EarthMoversDist.jpeg"), units = "in", width = 2, height = 2)
 
 # Combine the Austin and New Orleans plots in Inkscape
 clrs # "#FFA500A6" the hexcode for making a legend in Inkscape
@@ -1283,10 +1350,6 @@ emd_res %>%
     mean = round(Rmisc::CI(EMD, ci = 0.95)[["mean"]], 3),
     l_CI = round(Rmisc::CI(EMD, ci = 0.95)[["lower"]], 3),
     u_CI = round(Rmisc::CI(EMD, ci = 0.95)[["upper"]], 3)
-    # Checking that 95% CIs are just as tight around the mean but using a different package
-    # mean = round(confintr::ci_mean(EMD)[["estimate"]], 3),
-    # l_CI = round(confintr::ci_mean(EMD)[["interval"]][1], 3),
-    # u_CI = round(confintr::ci_mean(EMD)[["interval"]][2], 3)
 ) %>% 
   # Arrange to match ordering of Table 1 in the main text
   dplyr::arrange(.,
@@ -1299,8 +1362,13 @@ emd_res %>%
 
 # References
 
-    1. Rubner, Y., Tomasi, C., & Guibas, L. J. 2000. The Earth Mover’s Distance as a metric for image retrieval. International Journal of Computer Vision, 40(2), 99.
+    1. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
     
+    2. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
+
+    3. Rubner, Y., Tomasi, C., & Guibas, L. J. 2000. The Earth Mover’s Distance as a metric for image retrieval. International Journal of Computer Vision, 40(2), 99.
+    
+Documenting session information and software versions at the time of knitting the RMarkdown output.
 ```{r}
 
 sessionInfo()

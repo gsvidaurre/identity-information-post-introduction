@@ -1,20 +1,20 @@
 ---
-title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 06:</center>
-subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Acoustic Space Figures</center>
- &nbsp;
+title: "Identity Encoding Code 06:"
+subtitle: "Acoustic Space Figures"
 author: |
+  <hr>
   <center style="font-style:normal;">
   <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
-  &nbsp;
+  <br>
+  <br>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
-  <br />
+  <br>
   <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
-  &nbsp;
-date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
-  <br />
+  <br>
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
     toc: true
@@ -29,42 +29,50 @@ a:hover {
   color: #23527c !important;
 }
 
-h1.title {
+h1.title { /* Document title */
   font-size: 32px;
   color: black;
   font-weight: normal;
+  text-align: center;
 }
 
 h1 {
-   color: black;
+   color: #0E0E7D;
    font-size: 26px;
    font-weight: normal;
 }
 
 h2 {
-   color: black;
+   color: #0E0E7D;
    font-size: 24px;
    font-weight: bold;
 }
 
-h3 {
-   color: black;
-   font-size: 20px;
+h3 { /* Document subtitle */
+   color: #0E0E7D;
+   font-size: 28px;
    font-weight: normal;
+   text-align: center;
 }
 
 h4 {
-   color: black;
+   color: #0E0E7D;
    font-size: 20px;
    font-weight: normal;
 }
 
+h4.date { /* Date in document header */
+  font-size: 22px;
+  font-style:normal;
+  text-align: center;
+}
+
 body{ /* Normal */
-      font-size: 18px;
+      font-size: 20px;
   }
   
 code.r{ /* Code block */
-    font-size: 18px;
+    font-size: 20px;
 }
 </style>
 
@@ -76,16 +84,24 @@ knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity
 
 ```
 
-We visualized hierarchical mapping patterns by making plots of low-dimensional acoustic space across ranges, social scales, similarity methods. For the site scale, we also made plots across the 3 datasets used to address potential repeated sampling of individuals: no filtering (full dataset), filtering by Gaussian mixture models, and filtering by visual classification. See the methods and appendix of the associated publication for more information about these analyses.
+<hr>
+
+This code accompanies the following paper in PLOS Computational Biology:
+
+Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. Individual identity information persists in learned calls of introduced parrot populations.
+
+<hr>
+
+We visualized hierarchical mapping patterns by making plots of low-dimensional acoustic space across ranges, social scales, and similarity methods. For the site scale, we also made plots across the 3 datasets used to address potential repeated sampling of individuals: no filtering (full dataset), filtering by Gaussian mixture models, and filtering by visual classification. See the methods and appendix of the associated publication for more information about these analyses.
 
 Check out Github repositories from previous work for related analyses and code:
 
 - [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
 
-- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[4]</sup></a>
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[2]</sup></a>
 
 Please cite both the associated papers and code (see DOIs on GitHub) if the code or analyses in these repositories are useful for your own research.
-```{r chunk1 load libraries echo = TRUE, eval = TRUE, message = FALSE}
+```{r chunk1 load libraries, message = FALSE}
 
 rm(list = ls())
 
@@ -103,11 +119,11 @@ cores <- parallel::detectCores() - 2
 
 ```
 
-Read in extended selection table (EST). Metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales. 
+Read in the extended selection table (EST). Metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales. 
 ```{r chunk2}
 
 nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
-glimpse(nat_int_est)
+# glimpse(nat_int_est)
 
 ```
 
@@ -162,25 +178,28 @@ class(nat_int_est)
 
 ```
 
-Monk parakeet site scale datasets
+Read in the monk parakeet site scale datasets.
 ```{r site scale datasets}
 
 site_scale_nf <- readRDS(file.path(path, "site_scale_nf.RDS"))
-glimpse(site_scale_nf)
+# glimpse(site_scale_nf)
+dim(site_scale_nf)
 
 site_scale_cf <- readRDS(file.path(path, "site_scale_cf.RDS"))
-glimpse(site_scale_cf)
+# glimpse(site_scale_cf)
+dim(site_scale_cf)
 
 site_scale_vf <- readRDS(file.path(path, "site_scale_vf.RDS"))
-glimpse(site_scale_vf)
+# glimpse(site_scale_vf)
+dim(site_scale_vf)
 
 ```
 
 # Optimize MDS per social scale and similarity method
 
-Here, MDS was optimized to reduce stress, such that patterns in acoustic space reflected "optimal" solutions. Without optimization of MDS, it can be hard to tell whether patterns seen using the first two axes are biologically relevant, or due to a poor MDS solution in low dimensional space.
+Here, MDS was optimized to reduce stress, such that patterns in acoustic space reflected "optimal" solutions. Without optimization of MDS, it can be hard to tell whether patterns seen using the first two axes are biologically relevant, or due to a less optimal MDS solution in low dimensional space.
 
-Iterate over as many dimensions possible given computation resources, perhaps 2 to 25. Save results, and plot stress for the individual scale, as well as the site scale across both similarity methods. Choose the number of dimensions that yields the lowest stress.
+Iterate over as many dimensions possible given computational resources,then save results, and plot stress for the individual scale, as well as the site scale across both similarity methods. Choose the number of dimensions that yields the lowest stress.
 
 Read in SPCC and RF similarity matrices.
 ```{r chunk4}
@@ -202,17 +221,20 @@ sup_rf_df <- read.csv(file.path(path, "supervised_RF_datasets_acousticSimilarity
 # Get the datasets of calls used for validation and prediction
 vp_df <- sup_rf_df %>%
   dplyr::filter(rf_set %in% c("validation", "prediction")) %>% 
+  dplyr::filter(sound.files %in% dimnames(vp_prox_mat)[[1]]) %>% 
   droplevels()
 
 dim(vp_df)
 
-```
+# Looks good
+# all(vp_df$sound.files %in% dimnames(vp_prox_mat)[[1]])
+# all(dimnames(vp_prox_mat)[[1]] %in% vp_df$sound.files)
 
-# Optimize MDS across social scales and similarity methods
+```
 
 ## SPCC
 
-```{r chunk5}
+```{r chunk5, eval = FALSE}
   
 # Convert to a distance matrix and dist object for isoMDS
 dist_mat <- stats::as.dist(1 - xc_mat_spec, diag = TRUE, upper = TRUE)
@@ -241,7 +263,7 @@ saveRDS(iso_list, file.path(path, "isoMDS_optimize_SPCC.RDS"))
 
 ## Random forests
 
-```{r chunk6}
+```{r chunk6, eval = FALSE}
 
 # Convert to a distance matrix and dist object for isoMDS
 dist_mat <- stats::as.dist(1 - vp_prox_mat, diag = TRUE, upper = TRUE)
@@ -325,7 +347,7 @@ stress_df %>%
 The dotted line at 5% is a general rule of thumb for low stress. I couldn't run MDS with more than 15 dimensions for the site scale on my local machine, but this maximum dimensions I could run for the site scale yielded low stress as well, around 7 - 8%.
 
 Extract the MDS solution with 15 dimensions per similarity method and social scale. Write out a single data frame across social scales and similarity methods.
-```{r chunk10}
+```{r chunk10, eval = FALSE}
 
 # Get the MDS solution with the 15 dimensions per similarity method (these had the lowest stress values)
 opt_spcc <- iso_spcc$`15`$points
@@ -371,6 +393,8 @@ Use these MDS coordinates from the optimal MDS solutions per social scale and si
 mds_df <- read.csv(file.path(path, "optimized_MDS_coords_metadata.csv"))
 glimpse(mds_df)
 
+table(mds_df$sim_meth)
+
 ```
 
 ## Main figures
@@ -380,10 +404,10 @@ Acoustic space figures for main manuscript. In Figures 1 and 2, the native and i
 ## Figure 2: Individual scale, random forests
 
 A visual of random forests acoustic space at the individual scale per range, using the random forests validation matrix. Note that this is the same matrix used to make the supplementary figure demonstrating random forests validation. 
-```{r echo = TRUE, echo = TRUE}
+```{r}
 
 rf_validatn <- read.csv(file.path(path, "supervised_RF_datasets_acousticSimilarity.csv")) %>%
-  filter(rf_set == "validation") %>%
+  dplyr::filter(rf_set == "validation") %>%
   dplyr::select(sound.files, range, country, region, dept_state, introduced_city, site, site_year, year, Bird_ID)
 
 glimpse(rf_validatn)
@@ -392,7 +416,7 @@ glimpse(rf_validatn)
 indivs <- rf_validatn %>%
   # Remove the ASCA individual that was a loner in El Paso, TX
   # This individual is shown in a validation figure in supplementary material
-  filter(site != "ASCA") %>%
+  dplyr::filter(site != "ASCA") %>%
   pull(Bird_ID) %>%
   unique() %>%
   as.character()
@@ -422,7 +446,7 @@ tmp_mds_df <- mds_df %>%
   dplyr::filter(social_scale == "Individual") %>%
   dplyr::filter(sim_meth == "Random forests") %>%
   dplyr::rename(`ids` = "Bird_ID") %>%
-  filter(ids %in% indivs) %>%
+  dplyr::filter(ids %in% indivs) %>%
   dplyr::mutate(
     sim_meth = gsub("Random forests", "Random forests validation", sim_meth),
     range = factor(range, levels = c("Native", "Introduced"))
@@ -460,8 +484,6 @@ hulls <- plyr::ddply(tmp_mds_df, "num_ids", function(x){
   x[chull(x$X, x$Y), ]
 })
 
-x11()
-
 gg <- tmp_mds_df %>%
   ggplot(aes(x = X, y = Y, shape = num_ids)) + 
   geom_polygon(data = hulls, aes(x = X, y = Y, fill = num_ids, color = num_ids), alpha = 0.2, size = 0.2, show.legend = FALSE) +
@@ -485,38 +507,38 @@ gg <- tmp_mds_df %>%
 
 gg
 
-ggsave(file.path(gpath, "HierarchicalMapping_RFAcousticSpace_IndivScale.tiff"), units = "in", width = 4, height = 4.25, dpi = 300) 
+# ggsave(file.path(gpath, "HierarchicalMapping_RFAcousticSpace_IndivScale.tiff"), units = "in", width = 4, height = 4.25, dpi = 300) 
 
-dev.off()
+# dev.off()
 
 # Save the legend separately
-gg_leg <- gtable::gtable_filter(ggplot_gtable(ggplot_build(
-  gg +
-    guides(color = guide_legend(title = "Individuals", title.position = "top", nrow = 2, byrow = TRUE), shape = guide_legend(title = "Individuals", title.position = "top", nrow = 2, byrow = TRUE), fill = guide_legend(title = "Individuals", title.position = "top", nrow = 2, byrow = TRUE)) +
-    theme(
-      legend.title = element_text(size = 10),
-      legend.text = element_text(size = 10),
-      legend.justification = "center",
-      legend.position = "top",
-      legend.margin = margin(0, 0, 0, 0),
-      legend.box.margin = margin(3, -5, -7, -5), # top, right, bottom, left
-      legend.key.width = unit(0.5, "lines"),
-      legend.key.height = unit(0.5, "lines")
-    )
-)), "guide-box")
+# gg_leg <- gtable::gtable_filter(ggplot_gtable(ggplot_build(
+#   gg +
+#     guides(color = guide_legend(title = "Individuals", title.position = "top", nrow = 2, byrow = TRUE), shape = guide_legend(title = "Individuals", title.position = "top", nrow = 2, byrow = TRUE), fill = guide_legend(title = "Individuals", title.position = "top", nrow = 2, byrow = TRUE)) +
+#     theme(
+#       legend.title = element_text(size = 10),
+#       legend.text = element_text(size = 10),
+#       legend.justification = "center",
+#       legend.position = "top",
+#       legend.margin = margin(0, 0, 0, 0),
+#       legend.box.margin = margin(3, -5, -7, -5), # top, right, bottom, left
+#       legend.key.width = unit(0.5, "lines"),
+#       legend.key.height = unit(0.5, "lines")
+#     )
+# )), "guide-box")
 
-dev.off()
+# dev.off()
 
-tiff(file.path(gpath, "HierarchicalMapping_RFAcousticSpace_IndivScale_Legend.tiff"), units = "in", width = 5, height = 2, res = 300)
-grid.draw(gg_leg)
-dev.off()
+# tiff(file.path(gpath, "HierarchicalMapping_RFAcousticSpace_IndivScale_Legend.tiff"), units = "in", width = 5, height = 2, res = 300)
+# grid.draw(gg_leg)
+# dev.off()
 
 ```
 
 ## Figure 3: Site scale, random forests
 
-Make a plot of RF acoustic space at the site scale between ranges
-```{r eval = TRUE, echo = TRUE}
+Make a plot of random forests acoustic space at the site scale between ranges.
+```{r eval = FALSE}
 
 ############### Site scale calls, full dataset #############
 
@@ -534,6 +556,17 @@ nat_sites <- nat_int_est %>%
   sample(4, replace = FALSE)
 
 nat_sites
+
+```
+
+```{r echo = FALSE}
+
+# Assign the nat_sites manually for RMarkdown rendering, since the results come out differently for random sampling compared to when I made the main manuscript figures
+nat_sites <- c("INES-08_2017", "PIED_2017", "ROSA_2017", "LENA_2017")
+
+```
+
+```{r}
 
 # Introduced range: Get the 4 of the 6 sites from Austin 2019 with more than 10 calls
 int_sites <- nat_int_est %>%
@@ -567,17 +600,12 @@ id_df
 # 8    SOCC_2019 Introduced-4
 
 # Subset the MDS coordinates by calls for these sites
-set.seed(seed)
 tmp_mds_df <- mds_df %>%
   dplyr::filter(social_scale == "Site") %>%
   dplyr::filter(sim_meth == "Random forests") %>%
   dplyr::filter(site_year %in% c(nat_sites, int_sites)) %>%
   # After filtering, make the id column sites so that the legend is less busy
   dplyr::rename(`ids` = "site_year") %>%
-  # dplyr::mutate(
-    # ids = as.character(ids),
-    # ids = factor(ids, levels = gsub("_2017|_2019", "", c(nat_sites, int_sites)))
-  # ) %>% 
   inner_join(
     id_df,
     by = c("ids" = "site_ids")
@@ -611,8 +639,6 @@ hulls <- plyr::ddply(tmp_mds_df, "num_ids", function(x){
   x[chull(x$X, x$Y), ]
 })
 
-x11()
-
 gg <- tmp_mds_df %>%
   ggplot(aes(x = X, y = Y, shape = num_ids)) + 
   geom_polygon(data = hulls, aes(x = X, y = Y, fill = num_ids, color = num_ids), alpha = 0.2, size = 0.2, show.legend = FALSE) +
@@ -636,31 +662,31 @@ gg <- tmp_mds_df %>%
 
 gg
 
-ggsave(file.path(gpath, "HierarchicalMapping_RFAcousticSpace_SiteScale.tiff"), units = "in", width = 4, height = 4.25, dpi = 300) 
-
-dev.off()
-
-# Save the legend separately
-gg_leg <- gtable::gtable_filter(ggplot_gtable(ggplot_build(
-  gg +
-    guides(color = guide_legend(title = "Sites", title.position = "top", nrow = 2, byrow = TRUE), shape = guide_legend(title = "Sites", title.position = "top", nrow = 2, byrow = TRUE), fill = guide_legend(title = "Sites", title.position = "top", nrow = 2, byrow = TRUE)) +
-    theme(
-      legend.title = element_text(size = 10),
-      legend.text = element_text(size = 10),
-      legend.justification = "center",
-      legend.position = "top",
-      legend.margin = margin(0, 0, 0, 0),
-      legend.box.margin = margin(3, -5, -7, -5), # top, right, bottom, left
-      legend.key.width = unit(0.5, "lines"),
-      legend.key.height = unit(0.5, "lines")
-    )
-)), "guide-box")
-
-dev.off()
-
-tiff(file.path(gpath, "HierarchicalMapping_RFAcousticSpace_SiteScale_Legend.tiff"), units = "in", width = 5, height = 2, res = 300)
-grid.draw(gg_leg)
-dev.off()
+# ggsave(file.path(gpath, "HierarchicalMapping_RFAcousticSpace_SiteScale.tiff"), units = "in", width = 4, height = 4.25, dpi = 300) 
+# 
+# dev.off()
+# 
+# # Save the legend separately
+# gg_leg <- gtable::gtable_filter(ggplot_gtable(ggplot_build(
+#   gg +
+#     guides(color = guide_legend(title = "Sites", title.position = "top", nrow = 2, byrow = TRUE), shape = guide_legend(title = "Sites", title.position = "top", nrow = 2, byrow = TRUE), fill = guide_legend(title = "Sites", title.position = "top", nrow = 2, byrow = TRUE)) +
+#     theme(
+#       legend.title = element_text(size = 10),
+#       legend.text = element_text(size = 10),
+#       legend.justification = "center",
+#       legend.position = "top",
+#       legend.margin = margin(0, 0, 0, 0),
+#       legend.box.margin = margin(3, -5, -7, -5), # top, right, bottom, left
+#       legend.key.width = unit(0.5, "lines"),
+#       legend.key.height = unit(0.5, "lines")
+#     )
+# )), "guide-box")
+# 
+# dev.off()
+# 
+# tiff(file.path(gpath, "HierarchicalMapping_RFAcousticSpace_SiteScale_Legend.tiff"), units = "in", width = 5, height = 2, res = 300)
+# grid.draw(gg_leg)
+# dev.off()
 
 ```
 
@@ -702,7 +728,7 @@ tmp_mds_df <- mds_df %>%
   dplyr::filter(social_scale == "Individual") %>%
   dplyr::filter(sim_meth == "SPCC") %>%
   dplyr::rename(`ids` = "Bird_ID") %>%
-  filter(ids %in% c(t_indivs, v_indivs)) %>%
+  dplyr::filter(ids %in% c(t_indivs, v_indivs)) %>%
   dplyr::mutate(
     ids = as.character(ids),
     # ids = gsub("^NAT-|^INT-", "", ids),
@@ -754,8 +780,6 @@ hulls <- plyr::ddply(tmp_mds_df, "ids", function(x){
   x[chull(x$X, x$Y), ]
 })
 
-# x11()
-
 tmp_mds_df %>%
   ggplot(aes(x = X, y = Y, shape = ids)) + 
   geom_polygon(data = hulls, aes(x = X, y = Y, fill = ids, color = ids), alpha = 0.2, size = 0.2, show.legend = FALSE) +
@@ -785,34 +809,34 @@ tmp_mds_df %>%
     plot.margin = margin(0, 5, 0.5, 1)
   )
 
-ggsave(file.path(gpath, "HierarchicalMapping_SPCCAcousticSpace_IndivScale.tiff"), units = "in", width = 7.48, height = 6, dpi = 300) 
+# ggsave(file.path(gpath, "HierarchicalMapping_SPCCAcousticSpace_IndivScale.tiff"), units = "in", width = 7.48, height = 6, dpi = 300) 
 
 ```
 
 ## Site scale, datasets for repeated individual sampling
 
 Make a multi-faceted plot for random forests and SPCC similarity at the site scale per range and across site-scale datasets. Filter the MDS coordinates by calls retained in the clustering and visual classification filtered datasets. Use the same site-years initialized above for Figure 3. 
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 nat_sites
 int_sites
 
 # Full dataset for these sites
 nf_calls <- site_scale_nf %>%
-  filter(social_scale == "Site") %>%
-  filter(site_year %in% c(nat_sites, int_sites)) %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(site_year %in% c(nat_sites, int_sites)) %>%
   pull(sound.files)
 
 # Clustering dataset for these sites
 cf_calls <- site_scale_cf %>%
-  filter(social_scale == "Site") %>%
-  filter(site_year %in% c(nat_sites, int_sites)) %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(site_year %in% c(nat_sites, int_sites)) %>%
   pull(sound.files)
 
 # Visual classification dataset for these sites
 vf_calls <- site_scale_vf %>%
-  filter(social_scale == "Site") %>%
-  filter(site_year %in% c(nat_sites, int_sites)) %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(site_year %in% c(nat_sites, int_sites)) %>%
   pull(sound.files)
 
 # Iterate over similarity methods and datasets to perform MDS 
@@ -832,8 +856,8 @@ site_datasets_mds_df <- rbindlist(pblapply(1:length(sim_meth), function(s){
     
     # Filter the MDS data frame by the similarity method and the calls in the given site scale dataset
     tmp_df <- mds_df %>%
-      filter(sim_meth == meth) %>%
-      filter(sound.files %in% call_list[[d]]) %>%
+      dplyr::filter(sim_meth == meth) %>%
+      dplyr::filter(sound.files %in% call_list[[d]]) %>%
       droplevels() %>%
       dplyr::mutate(
         dataset = datasets[d]
@@ -856,7 +880,7 @@ site_datasets_mds_df %>%
 ```
 
 A plot of the calls for the 4 native range and 4 introduced range sites for the 3 site scale datasets with random forests and SPCC similarity. The full dataset of calls per site and range was not randomly sampled as for the main site scale figure.
-```{r echo = TRUE, echo = TRUE}
+```{r}
 
 tmp_mds_df <- site_datasets_mds_df %>%
   dplyr::mutate(
@@ -884,8 +908,6 @@ shps <- rep(c(21, 23, 24, 25), 2)
 hulls <- plyr::ddply(tmp_mds_df, "ids_dataset_sim", function(x){
   x[chull(x$X, x$Y), ]
 })
-
-# x11()
 
 tmp_mds_df %>%
   ggplot(aes(x = X, y = Y, shape = site)) + 
@@ -919,6 +941,19 @@ tmp_mds_df %>%
   )
 
 # Change resolution later as needed
-ggsave(file.path(gpath, "HierarchicalMapping_RFSPCC_AcousticSpace_SiteDatasets.tiff"), units = "in", width = 7.5, height = 7, dpi = 300) 
+# ggsave(file.path(gpath, "HierarchicalMapping_RFSPCC_AcousticSpace_SiteDatasets.tiff"), units = "in", width = 7.5, height = 7, dpi = 300) 
+
+```
+
+# References
+
+    1. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
+    
+    2. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
+
+Documenting session information and software versions at the time of knitting the RMarkdown output.
+```{r echo = TRUE, eval = TRUE}
+
+sessionInfo()
 
 ```

@@ -1,20 +1,20 @@
 ---
-title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 01:</center>
-subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Summary Statistics and Preliminary Visual Inspection</center>
- &nbsp;
+title: "Identity Encoding Code 01:"
+subtitle: "Summary Statistics and Preliminary Visual Inspection"
 author: |
+  <hr>
   <center style="font-style:normal;">
   <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
-  &nbsp;
+  <br>
+  <br>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
-  <br />
+  <br>
   <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
-  &nbsp;
-date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B %Y')`</center>
-  <br />
+  <br>
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
     toc: true
@@ -29,42 +29,50 @@ a:hover {
   color: #23527c !important;
 }
 
-h1.title {
+h1.title { /* Document title */
   font-size: 32px;
   color: black;
   font-weight: normal;
+  text-align: center;
 }
 
 h1 {
-   color: black;
+   color: #0E0E7D;
    font-size: 26px;
    font-weight: normal;
 }
 
 h2 {
-   color: black;
+   color: #0E0E7D;
    font-size: 24px;
    font-weight: bold;
 }
 
-h3 {
-   color: black;
-   font-size: 20px;
+h3 { /* Document subtitle */
+   color: #0E0E7D;
+   font-size: 28px;
    font-weight: normal;
+   text-align: center;
 }
 
 h4 {
-   color: black;
+   color: #0E0E7D;
    font-size: 20px;
    font-weight: normal;
 }
 
+h4.date { /* Date in document header */
+  font-size: 22px;
+  font-style:normal;
+  text-align: center;
+}
+
 body{ /* Normal */
-      font-size: 18px;
+      font-size: 20px;
   }
   
 code.r{ /* Code block */
-    font-size: 18px;
+    font-size: 20px;
 }
 </style>
 
@@ -75,6 +83,14 @@ knitr::opts_knit$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-
 knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
 
 ```
+
+<hr>
+
+This code accompanies the following paper in PLOS Computational Biology:
+
+Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. Individual identity information persists in learned calls of introduced parrot populations.
+
+<hr>
 
 Introduced range calls were taken through a pre-processing workflow similar to previously published native range calls<a href='#References'><sup>[1]</sup></a>. Previously published introduced range calls for 2004 were provided by Susannah Bhurman-Deever<a href='#References'><sup>[2]</sup></a>, and were pre-processed as were all other calls. The package `warbleR`<a href='#References'><sup>[3]</sup></a> was used for pre-processing, making extended selection tables, and downstream analyses.
 
@@ -112,26 +128,26 @@ glimpse(nat_int_est)
 
 ```
 
-The extended selection table in .RDS format, the selection table in .csv format, and the .wav files containing pre-processed calls will be made publicly available.
+The extended selection table in .RDS format, the selection table in .csv format, and the .wav files containing pre-processed calls were made publicly available with the associated article.
 
 Write out the selection table (e.g. the data frame associated with the extended selection table) for sharing, as well as the .wav files associated with the extended selection table. Each .wav file corresponds to a cut of the original recording that contains the selected call and a small margin around the given call (with the exception of 2004 calls, which were obtained for this study as cuts of original recordings). The reason for writing out the data in this way is that the .RDS file of the extended selection table saved above may not be compatible with later versions of R. 
 ```{r chunk3, eval = FALSE}
 
 # Write out the selection table as a .csv
-write.csv(nat_inv_est, file.path(path, "nat_inv_indiv_site_seltbl.csv"), row.names = FALSE)
+write.csv(nat_int_est, file.path("/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introduction/Share_Data/Data", "monk_parakeet_contactCalls_rangeComparison_selectionTable.csv"), row.names = FALSE)
 
 # Write out the .wav files to a directory in which I'm using to compile data for sharing
 
 # Access the wave objects
-length(attr(nat_inv_est, "wave.objects"))
-attr(nat_inv_est, "wave.objects")[1]
+length(attr(nat_int_est, "wave.objects"))
+attr(nat_int_est, "wave.objects")[1]
 
 # Get the .wav objects and their respective filenames in order to write these out as separate .wav files
-wavs <- attr(nat_inv_est, "wave.objects")
-wav_nms <- names(attr(nat_inv_est, "wave.objects"))
+wavs <- attr(nat_int_est, "wave.objects")
+wav_nms <- names(attr(nat_int_est, "wave.objects"))
 
 # x <- 1 testing
-tmp_path <- "/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introducion/Share_Data/Data/pre-processed_calls"
+tmp_path <- "/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introduction/Share_Data/Data/pre-processed_calls"
 invisible(pblapply(1:length(wavs), function(x){
   writeWave(wavs[[x]], filename = file.path(tmp_path, wav_nms[x]), extensible = FALSE)
 }))
@@ -141,7 +157,7 @@ invisible(pblapply(1:length(wavs), function(x){
 # Filtering out some calls
 
 I dropped individual scale calls that had been added to the site scale (1 call per known repeatedly sampled individual in the final individual scale dataset, suffix "site_scale").
-```{r chunk3}
+```{r chunk3.1}
 
 # 31 calls with the suffix "_site_scale". Not all of these belonged to the individuals in the final individual scale dataset, since some individuals that we repeatedly sampled were dropped due to low sample sizes after pre-processing
 nat_int_est %>%
@@ -222,7 +238,7 @@ nat_int_est %>%
 
 ```
 
-The number of sites at which we sampled known repeatedly sampled individuals across ranges. 
+The number of sites at which we sampled known repeatedly sampled individuals across ranges.
 ```{r chunk6}
 
 nat_int_est %>%
@@ -524,8 +540,8 @@ file.rename(from = file.path(path, img_files), to = file.path(gpath, img_files))
 
 # Sampling maps
 
-Sampling map of Uruguay (native range).
-```{r echo = TRUE, eval = FALSE}
+Sampling map of Uruguay (native range). This map was made with polygons downloaded as shapefiles from GADM version 3.6. 
+```{r eval = FALSE}
 
 poly_path <- "/media/gsvidaurre/MYIOPSITTA/R/Uruguay2017_MonkParakeet_CallAnalysis/Data/Site_Recordings/"
 
@@ -621,10 +637,8 @@ dev.off()
 
 ```
 
-Inset sampling map of U.S. (introduced range). Get Canada and Mexico too.
-```{r echo = TRUE, eval = FALSE}
-
-# poly_path <- "/media/gsvidaurre/MYIOPSITTA/R/Uruguay2017_MonkParakeet_CallAnalysis/Data/Site_Recordings/"
+Sampling map of U.S. (introduced range). Get Canada and Mexico too.
+```{r eval = FALSE}
 
 states <- map_data("state")
 str(states)
@@ -715,7 +729,8 @@ dev.off()
     3. Araya‐Salas, M., G. Smith‐Vidaurre. 2017. warbleR: An R package to streamline analysis of animal acoustic signals. Methods in Ecology and Evolution 8(2), 184-191. https://doi.org/10.1111/2041-210X.12624
     
     4. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
-    
+
+Documenting session information and software versions at the time of knitting the RMarkdown output.
 ```{r chunk19}
 
 sessionInfo()

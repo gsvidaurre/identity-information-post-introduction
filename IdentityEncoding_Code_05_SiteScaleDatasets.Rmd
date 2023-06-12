@@ -1,20 +1,20 @@
 ---
-title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 05:</center>
-subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Generating Site Scale Datasets</center>
- &nbsp;
+title: "Identity Encoding Code 05:"
+subtitle: "Generating Site Scale Datasets"
 author: |
+  <hr>
   <center style="font-style:normal;">
   <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
-  &nbsp;
+  <br>
+  <br>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
-  <br />
+  <br>
   <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
-  &nbsp;
-date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
-  <br />
+  <br>
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
     toc: true
@@ -29,42 +29,50 @@ a:hover {
   color: #23527c !important;
 }
 
-h1.title {
+h1.title { /* Document title */
   font-size: 32px;
   color: black;
   font-weight: normal;
+  text-align: center;
 }
 
 h1 {
-   color: black;
+   color: #0E0E7D;
    font-size: 26px;
    font-weight: normal;
 }
 
 h2 {
-   color: black;
+   color: #0E0E7D;
    font-size: 24px;
    font-weight: bold;
 }
 
-h3 {
-   color: black;
-   font-size: 20px;
+h3 { /* Document subtitle */
+   color: #0E0E7D;
+   font-size: 28px;
    font-weight: normal;
+   text-align: center;
 }
 
 h4 {
-   color: black;
+   color: #0E0E7D;
    font-size: 20px;
    font-weight: normal;
 }
 
+h4.date { /* Date in document header */
+  font-size: 22px;
+  font-style:normal;
+  text-align: center;
+}
+
 body{ /* Normal */
-      font-size: 18px;
+      font-size: 20px;
   }
   
 code.r{ /* Code block */
-    font-size: 18px;
+    font-size: 20px;
 }
 </style>
 
@@ -76,16 +84,24 @@ knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity
 
 ```
 
-Here I generated 3 versions of the site scale dataset to account for repeated sampling of unmarked individuals at this social scale. These datasets include: no filtering (full dataset), filtering by Gaussian mixture models, and filtering by visual classification. We also include summary statistics about geographic distances among sites used for subsequent analyses in the native and introduced ranges, as well as geographic distances among introduced range sites used to quantify site scale convergence over sampling years. See the methods and supplement of the associated publication for more information about these analyses.
+<hr>
+
+This code accompanies the following paper in PLOS Computational Biology:
+
+Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. Individual identity information persists in learned calls of introduced parrot populations.
+
+<hr>
+
+Here I generated 3 versions of the site scale dataset to account for repeated sampling of unmarked individuals at this social scale (for both range comparison and temporal analyses). These datasets include: no filtering (full dataset), filtering by Gaussian mixture models, and filtering by visual classification. I also generated summary statistics about geographic distances among sites used for subsequent analyses in the native and introduced ranges, as well as geographic distances among introduced range sites used to quantify site scale convergence over sampling years. See the methods and supplement of the associated publication for more information about these analyses.
 
 Check out Github repositories from previous work for related analyses and code:
 
 - [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
 
-- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[4]</sup></a>
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[2]</sup></a>
 
 Please cite the associated papers as well as our code (see DOIs on GitHub) if the code or analyses across these repositories useful for your own research.
-```{r echo = TRUE, eval = TRUE, message = FALSE}
+```{r message = FALSE}
 
 rm(list = ls())
 
@@ -102,8 +118,8 @@ cores <- parallel::detectCores() - 2
 
 ```
 
-Read in extended selection table (EST). Metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales. 
-```{r echo = TRUE, eval = TRUE}
+Read in the extended selection table (EST). Metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales. 
+```{r}
 
 nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
 glimpse(nat_int_est)
@@ -113,7 +129,7 @@ glimpse(nat_int_est)
 # Filtering out some calls
 
 I dropped individual scale calls that had been added to the site scale (1 call per known repeatedly sampled individual in the final individual scale dataset, suffix "site_scale").
-```{r chunk3}
+```{r}
 
 # 31 calls with the suffix "_site_scale". Not all of these belonged to the individuals in the final individual scale dataset, since some individuals that we repeatedly sampled were dropped due to low sample sizes after pre-processing
 nat_int_est %>%
@@ -165,7 +181,7 @@ class(nat_int_est)
 
 We will use the three site-scale datasets and both similarity methods in subsequent analyses. For comparisons between the native and introduced ranges, we retained calls recorded in the cities of Austin and New Orleans in more recent sampling years. Austin and New Orleans calls from earlier sampling years were used in analyses compare site scale convergence over time (see below).
 
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 # Austin site-years to drop (representing earlier sampling years)
 aust2drop <- nat_int_est %>%
@@ -224,11 +240,11 @@ norl2drop
 ```
 
 Also initialize the 4 UM4 calls inadvertently retained at the site scale in previous work.
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 dropUM4 <- nat_int_est %>%
-  filter(social_scale == "Site") %>%
-  filter(Bird_ID == "NAT-UM4" & !grepl("site_scale", sound.files)) %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(Bird_ID == "NAT-UM4" & !grepl("site_scale", sound.files)) %>%
   pull(sound.files)
 
 dropUM4
@@ -236,14 +252,14 @@ dropUM4
 ```
 
 The first dataset can be obtained by getting all site-scale calls (no filtering on site-scale calls).
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 site_scale_nf <- nat_int_est %>%
-  filter(social_scale == "Site") %>%
+  dplyr::filter(social_scale == "Site") %>%
   # Drop Austin and New Orleans calls from earlier sampling years
-  filter(!site_year %in% c(aust2drop, norl2drop)) %>%
+  dplyr::filter(!site_year %in% c(aust2drop, norl2drop)) %>%
   # Drop the 4 UM4 calls inadvertently retained at the site scale in previous work
-  filter(!sound.files %in% dropUM4)
+  dplyr::filter(!sound.files %in% dropUM4)
 
 # glimpse(site_scale_nf)
 
@@ -254,21 +270,21 @@ saveRDS(site_scale_nf, file.path(path, "site_scale_nf.RDS"))
 The second dataset needs filtering by the SPCC threshold, then clustering to identify potential repeated individuals, then random sampling of 1 call per potential individual.
 
 Use the EST generated post-SPCC threshold and clustering to find the calls that never went into the app. These calls that didn't go into the app and the randomly sampled visual inpsection calls will be retained for the second dataset.
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 shiny_calls <- readRDS("/home/gsvidaurre/Desktop/GitHub_repos/vocal-learning-invasion/pot-rep-indiv-filter/shiny_potrepindiv_testing_module_est.RDS")
 
 not_shiny_calls <- nat_int_est %>%
   as_tibble() %>%
-  filter(social_scale == "Site") %>%
-  filter(!sound.files %in% shiny_calls$sound.files) %>%
+  dplyr::filter(social_scale == "Site") %>%
+  dplyr::filter(!sound.files %in% shiny_calls$sound.files) %>%
   droplevels()
 
 glimpse(not_shiny_calls)
 
 ```
 
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 # Among the calls use for Shiny, randomly sample one call per cluster (which in the app, were presented as potential individuals)
 
@@ -291,7 +307,7 @@ cluster_calls <- rbindlist(pblapply(1:length(site_year), function(x){
   res_df <- rbindlist(lapply(1:length(clusters), function(i){
     
     calls <- tmp_df %>%
-      filter(cluster == clusters[i]) %>%
+      dplyr::filter(cluster == clusters[i]) %>%
       pull(sound.files)
     
     if(length(calls) == 1){
@@ -315,17 +331,17 @@ glimpse(cluster_calls)
 ```
 
 Combine calls that never went into the app with calls that were set aside for the app. For the latter, we randomly sampled 1 call per cluster with more than one call.
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 site_scale_cf <- not_shiny_calls %>%
   bind_rows(
     nat_int_est %>%
-      filter(sound.files %in% cluster_calls$sound.files)
+      dplyr::filter(sound.files %in% cluster_calls$sound.files)
   ) %>%
   # Drop Austin and New Orleans calls from earlier sampling years
-  filter(!site_year %in% c(aust2drop, norl2drop)) %>%
+  dplyr::filter(!site_year %in% c(aust2drop, norl2drop)) %>%
   # Drop the 4 UM4 calls inadvertently retained at the site scale in previous work
-  filter(!sound.files %in% dropUM4)
+  dplyr::filter(!sound.files %in% dropUM4)
 
 glimpse(site_scale_cf)
 
@@ -334,7 +350,7 @@ saveRDS(site_scale_cf, file.path(path, "site_scale_cf.RDS"))
 ```
 
 The third dataset must be generated using multiobserver results from the Shiny for visual inspection. Find unique potential repeated individuals that have more than one call.
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 file_nms <- list.files(pattern = ".json$", path)
 file_nms
@@ -407,25 +423,25 @@ glimpse(observer_res_df)
 Concatenate calls that went through visual inspection and are being retained with the calls that never went into the app.
 
 Which sites were assessed by multiple observers?
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 mo_sites <- observer_res_df %>%
   group_by(site_year) %>%
   dplyr::summarise(
     n_observers = n_distinct(observer)
   ) %>%
-  filter(n_observers > 1) %>%
+  dplyr::filter(n_observers > 1) %>%
   pull(site_year)
   
 ```
 
 For each of these sites, retain data from one randomly selected observer.
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 set.seed(seed)
 
 retain_obs <- observer_res_df %>%
-  filter(site_year %in% mo_sites) %>%
+  dplyr::filter(site_year %in% mo_sites) %>%
   # dplyr::select(observer, site_year) %>%
   group_by(observer, site_year) %>%
   dplyr::summarise(n_calls = length(sound.files)) %>%
@@ -446,7 +462,7 @@ retain_obs
 observer_res_df_filt <- retain_obs %>%
   inner_join(
     observer_res_df %>%
-      filter(site_year %in% mo_sites),
+      dplyr::filter(site_year %in% mo_sites),
     by = c("site_year", "retain_observer" = "observer")
   ) %>%
   dplyr::rename(
@@ -455,7 +471,7 @@ observer_res_df_filt <- retain_obs %>%
   dplyr::select(observer, site_year, Class, sound.files) %>%
   bind_rows(
     observer_res_df %>%
-      filter(!site_year %in% mo_sites) %>%
+      dplyr::filter(!site_year %in% mo_sites) %>%
       droplevels()
   )
 glimpse(observer_res_df_filt)
@@ -465,7 +481,7 @@ nrow(observer_res_df) - nrow(observer_res_df_filt)
 
 ```
 
-```{r echo = TRUE, eval = FALSE}
+```{r eval = FALSE}
 
 site_scale_vf <- not_shiny_calls %>%
   bind_rows(
@@ -488,7 +504,7 @@ saveRDS(site_scale_vf, file.path(path, "site_scale_vf.RDS"))
 ## Summary statistics
 
 Check out numbers of calls per site_year across these 3 datasets.
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 site_scale_nf <- readRDS(file.path(path, "site_scale_nf.RDS"))
 site_scale_cf <- readRDS(file.path(path, "site_scale_cf.RDS"))
@@ -517,32 +533,32 @@ site_scale_vf %>%
 ```
 
 Which site_years across these 3 datasets had 6 calls or less?
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 # Full site scale dataset
 site_scale_nf %>%
   group_by(site_year) %>%
  dplyr::summarise(n_calls = length(sound.files)) %>%
-  filter(n_calls <= 6)
+  dplyr::filter(n_calls <= 6)
 
 # Site scale dataset that went through SPCC threshold and clustering
 # More sites with less than 5 calls, but no site-years with 3 or less
 site_scale_cf %>%
   group_by(site_year) %>%
  dplyr::summarise(n_calls = length(sound.files)) %>%
-  filter(n_calls <= 6)
+  dplyr::filter(n_calls <= 6)
 
 # Site scale dataset that went through SPCC threshold, clustering and visual inspection
 # A few sites have less than 5 calls now (3 or 4)
 site_scale_vf %>%
   group_by(site_year) %>%
  dplyr::summarise(n_calls = length(sound.files)) %>%
-  filter(n_calls <= 6)
+  dplyr::filter(n_calls <= 6)
 
 ```
 
 How many site-years represented per dataset? 55 site-years in each, for the comparison of site scale convergence between ranges. 
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 # Full site scale dataset
 site_scale_nf %>%
@@ -580,12 +596,12 @@ site_scale_cf %>%
 
 ```
 
-# Geographic distance among sites
+### Geographic distances among range comparison sites
 
 Pairwise geographic distances among sites in each range for the sites used in analyses comparing convergence between ranges.
 
 Native range, using spatial projection for Uruguay.
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 # Access EPSG codes to reproject in meters
 # Used EPSG 5383 for Uruguay
@@ -593,14 +609,6 @@ epsg <- rgdal::make_EPSG()
 # str(epsg)
 
 # epsg[grep("^5383$", epsg$code), ]
-
-# Get geographic coordinates for native range sites at which we repeatedly sampled individuals
-# Note that there were two clusters of nests at which we recorded at site 1145, considered a single site because we frequently observed birds from these clusters of nests staging and interacting together
-# coords_df <- nat_int_est %>%
-#   as_tibble() %>%
-#   filter(range == "Native" & social_scale == "Site") %>%
-#   dplyr::select(site, lat, lon) %>%
-#   distinct()
 
 coords_df <- site_scale_nf %>% 
   as_tibble() %>% 
@@ -640,7 +648,6 @@ round(range(nat_geo_dists[nat_geo_dists != 0])/1000, 2)
 The closest geographic distance between unique sites at which we obtained calls from repeatedly sampled individuals was 11km in the native range, between EMBR and CHAC. Note that nest clusters at site 1145 were considered as a single nest site.
 
 Introduced range, using spatial projection for U.S. These are the pairwise distances among the 15 introduced range sites that we used to compare hierarchical mapping patterns between ranges.
-
 ```{r echo = TRUE, eval = TRUE}
 
 # Access EPSG codes to reproject in meters
@@ -649,25 +656,6 @@ epsg <- rgdal::make_EPSG()
 # str(epsg)
 
 # epsg[grep("^2163$", epsg$code), ]
-
-# int_spatial <- nat_int_est %>%
-#   as_tibble() %>%
-#   dplyr::filter(range == "Introduced" & social_scale == "Site") %>%
-#   # Remove Austin and New Orleans calls
-#   dplyr::filter(!introduced_city %in% c("Austin", "New Orleans")) %>% 
-#   # Add back Austin and New Orleans calls from the later sampling years in each city (2019 for Austin and 2011 for New Orleans)
-#   bind_rows(
-#     nat_int_est %>%
-#       as_tibble() %>%
-#       dplyr::filter(range == "Introduced" & social_scale == "Site") %>%
-#       dplyr::filter(introduced_city == "Austin" & year == "2019")
-#   ) %>% 
-#   bind_rows(
-#     nat_int_est %>%
-#       as_tibble() %>%
-#       dplyr::filter(range == "Introduced" & social_scale == "Site") %>%
-#       dplyr::filter(introduced_city == "New Orleans" & year == "2011")
-#   ) 
 
 coords_df <- site_scale_nf %>% 
   as_tibble() %>% 
@@ -707,10 +695,21 @@ round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
 
 ```
 
+Write out the site scale datasets for range comparison analyses as .csv files for data sharing.
+```{r eval = FALSE}
+
+write.csv(site_scale_nf, file.path("/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introduction/Share_Data/Data", "monk_parakeet_rangeComparison_siteScale_noFilters.csv"), row.names = FALSE)
+
+write.csv(site_scale_cf, file.path("/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introduction/Share_Data/Data", "monk_parakeet_rangeComparison_siteScale_clusterFilter.csv"), row.names = FALSE)
+
+write.csv(site_scale_vf, file.path("/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introduction/Share_Data/Data", "monk_parakeet_rangeComparison_siteScale_visualFilter.csv"), row.names = FALSE)
+
+```
+
 # Temporal comparisons, site scale, introduced range
 
-Initialize and save the 3 site scale datasets for temporal comparisons.
-```{r echo = TRUE, eval = FALSE}
+Initialize and save the 3 site scale datasets for temporal comparisons in the introduced range.
+```{r eval = FALSE}
 
 site_scale_nf_temp <- nat_int_est %>%
   dplyr::filter(social_scale == "Site") %>%
@@ -724,10 +723,10 @@ saveRDS(site_scale_nf_temp, file.path(path, "site_scale_nf_temp.RDS"))
 site_scale_cf_temp <- not_shiny_calls %>%
   bind_rows(
     nat_int_est %>%
-      filter(sound.files %in% cluster_calls$sound.files)
+      dplyr::filter(sound.files %in% cluster_calls$sound.files)
   ) %>%
   # Filter by Austin and New Orleans calls
-  filter(introduced_city %in% c("Austin", "New Orleans"))
+  dplyr::filter(introduced_city %in% c("Austin", "New Orleans"))
 
 glimpse(site_scale_cf_temp)
 
@@ -736,10 +735,10 @@ saveRDS(site_scale_cf_temp, file.path(path, "site_scale_cf_temp.RDS"))
 site_scale_vf_temp <- not_shiny_calls %>%
   bind_rows(
     nat_int_est %>%
-    filter(sound.files %in% observer_res_df_filt$sound.files)
+    dplyr::filter(sound.files %in% observer_res_df_filt$sound.files)
   ) %>%
   # Filter by Austin and New Orleans calls
-  filter(introduced_city %in% c("Austin", "New Orleans"))
+  dplyr::filter(introduced_city %in% c("Austin", "New Orleans"))
 
 glimpse(site_scale_vf_temp) 
 
@@ -747,7 +746,7 @@ saveRDS(site_scale_vf_temp, file.path(path, "site_scale_vf_temp.RDS"))
 
 ```
 
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 site_scale_nf_temp <- readRDS(file.path(path, "site_scale_nf_temp.RDS"))
 glimpse(site_scale_nf_temp)
@@ -760,15 +759,22 @@ glimpse(site_scale_vf_temp)
 
 ```
 
+### Geographic distances among temporal comparison sites
+
 Introduced range, using spatial projection for U.S. These are the pairwise distances among the 14 introduced range sites that we used to compare hierarchical mapping patterns over time in the introduced range. Calculated using the full site scale dataset for temporal comparisons, since all sites used for temporal analyses were the same (they just differed in which calls were used per site).
 
-2004 (6 sites, Texas and Louisiana).
-```{r echo = TRUE, eval = TRUE}
+The total number of sites used across the 2004, 2011, and 2019 comparisons.
+```{r}
 
 site_scale_nf_temp %>% 
   pull(site) %>% 
   unique() %>% 
   length()
+
+```
+
+2004 (6 sites, Texas and Louisiana).
+```{r}
 
 epsg <- rgdal::make_EPSG()
 
@@ -869,7 +875,7 @@ round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
 ```
 
 2011 (7 sites, Texas and Louisiana).
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 #### Texas
 
@@ -968,7 +974,7 @@ round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
 ```
 
 2019 (6 sites, Texas only).
-```{r echo = TRUE, eval = TRUE}
+```{r}
 
 int_temporal <- site_scale_nf_temp %>%
   as_tibble() %>%
@@ -1014,5 +1020,29 @@ int_geo_dists/1000
 
 # The range of geographic distances among introduced range sites, in km
 round(range(int_geo_dists[int_geo_dists != 0])/1000, 2)
+
+```
+
+Write out the site scale datasets for introduced range temporal analyses as .csv files for data sharing.
+```{r eval = FALSE}
+
+write.csv(site_scale_nf_temp, file.path("/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introduction/Share_Data/Data", "monk_parakeet_introducedRange_siteScaleTemporal_noFilters.csv"), row.names = FALSE)
+
+write.csv(site_scale_cf_temp, file.path("/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introduction/Share_Data/Data", "monk_parakeet_introducedRange_siteScaleTemporal_clusterFilter.csv"), row.names = FALSE)
+
+write.csv(site_scale_vf_temp, file.path("/home/gsvidaurre/Desktop/MANUSCRIPTS/Submitted_InReview/HierarchicalMapping_Introduction/Share_Data/Data", "monk_parakeet_introducedRange_siteScaleTemporal_visualFilter.csv"), row.names = FALSE)
+
+```
+
+# References
+
+    1. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
+    
+    2. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
+
+Documenting session information and software versions at the time of knitting the RMarkdown output.
+```{r}
+
+sessionInfo()
 
 ```

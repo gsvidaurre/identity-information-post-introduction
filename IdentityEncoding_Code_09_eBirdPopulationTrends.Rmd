@@ -1,20 +1,20 @@
 ---
-title: <center style="font-size:30px;font-style:normal;color:black;">Accompanying Code 09:</center>
-subtitle: <center style="font-size:30px;font-style:normal;color:#0E0E7D;">Introduced Range eBird Population Trends Over Time</center>
- &nbsp;
+title: "Identity Encoding Code 09:"
+subtitle: "Introduced Range eBird Population Trends Over Time"
 author: |
+  <hr>
   <center style="font-style:normal;">
   <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
-  &nbsp;
+  <br>
+  <br>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
   <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
-  <br />
+  <br>
   <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
-  &nbsp;
-date: <center style="font-size:22px;font-style:normal";>`r format(Sys.time(), '%d %B, %Y')`</center>
-  <br />
+  <br>
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   html_document:
     toc: true
@@ -29,42 +29,50 @@ a:hover {
   color: #23527c !important;
 }
 
-h1.title {
+h1.title { /* Document title */
   font-size: 32px;
   color: black;
   font-weight: normal;
+  text-align: center;
 }
 
 h1 {
-   color: black;
+   color: #0E0E7D;
    font-size: 26px;
    font-weight: normal;
 }
 
 h2 {
-   color: black;
+   color: #0E0E7D;
    font-size: 24px;
    font-weight: bold;
 }
 
-h3 {
-   color: black;
-   font-size: 20px;
+h3 { /* Document subtitle */
+   color: #0E0E7D;
+   font-size: 28px;
    font-weight: normal;
+   text-align: center;
 }
 
 h4 {
-   color: black;
+   color: #0E0E7D;
    font-size: 20px;
    font-weight: normal;
 }
 
+h4.date { /* Date in document header */
+  font-size: 22px;
+  font-style:normal;
+  text-align: center;
+}
+
 body{ /* Normal */
-      font-size: 18px;
+      font-size: 20px;
   }
   
 code.r{ /* Code block */
-    font-size: 18px;
+    font-size: 20px;
 }
 </style>
 
@@ -76,15 +84,17 @@ knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity
 
 ```
 
-See the methods and appendix of the associated publication for more information about these analyses, and tips for [eBird best practices](https://cornelllabofornithology.github.io/ebird-best-practices/ebird.html). 
+<hr>
 
-Check out Github repositories from previous work for related analyses and code:
+This code accompanies the following paper in PLOS Computational Biology:
 
-- [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
+Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. Individual identity information persists in learned calls of introduced parrot populations.
 
-- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[3]</sup></a>
+<hr>
 
-Please cite the associated papers and code (see DOIs on GitHub) if the code or analyses across these repositories are useful for your own research.
+See the methods and appendix of the associated publication for more information about these analyses, and these tips for [eBird best practices](https://cornelllabofornithology.github.io/ebird-best-practices/ebird.html). 
+
+Please cite the associated paper and code (see the DOI on GitHub) if these analyses are useful for your own research.
 ```{r chunk1, warning = FALSE, message = FALSE}
 
 rm(list = ls())
@@ -106,7 +116,7 @@ cores <- parallel::detectCores() - 2
 
 ```
 
-Read in extended selection table (EST). This contains metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales.
+Read in the extended selection table (EST). This contains metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales.
 ```{r chunk2}
 
 nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
@@ -114,7 +124,7 @@ nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparis
 
 # For which introduced range cities should we get eBird data?
 nat_int_est %>%
-  filter(!is.na(introduced_city)) %>%
+  dplyr::filter(!is.na(introduced_city)) %>%
   pull(introduced_city) %>%
   unique() %>%
   as.character()
@@ -138,18 +148,18 @@ Unless otherwise noted, the search was limited to <i>Myiopsitta monachus</i>. Fo
 
 # Austin, from Travis county
 ebd_aust_mnk <- read_ebd(file.path(file.path(path, "ebd_US-TX-453_200401_202001_relAug-2020"), "ebd_US-TX-453_200401_202001_relAug-2020.txt")) %>%
-  filter(grepl("Austin", locality, ignore.case = TRUE)) %>%
+  dplyr::filter(grepl("Austin", locality, ignore.case = TRUE)) %>%
   # Get just monk parakeets
-  filter(grepl("Myiopsitta", scientific_name, ignore.case = TRUE)) %>%
+  dplyr::filter(grepl("Myiopsitta", scientific_name, ignore.case = TRUE)) %>%
   droplevels()
 
 saveRDS(ebd_aust_mnk, file.path(path, "ebd_aust_mnk.RDS"))
 
 # New Orleans, from Orleans county
 ebd_norl_mnk <- read_ebd(file.path(file.path(path, "ebd_US-LA-071_200401_202001_relAug-2020"), "ebd_US-LA-071_200401_202001_relAug-2020.txt")) %>%
-  filter(grepl("New Orleans", locality, ignore.case = TRUE)) %>%
+  dplyr::filter(grepl("New Orleans", locality, ignore.case = TRUE)) %>%
   # Get just monk parakeets
-  filter(grepl("Myiopsitta", scientific_name, ignore.case = TRUE)) %>%
+  dplyr::filter(grepl("Myiopsitta", scientific_name, ignore.case = TRUE)) %>%
   droplevels()
 
 saveRDS(ebd_norl_mnk, file.path(path, "ebd_norl_mnk.RDS"))
@@ -157,7 +167,7 @@ saveRDS(ebd_norl_mnk, file.path(path, "ebd_norl_mnk.RDS"))
 ```
 
 Checking that the monk parakeet observations looked ok for assessing population trends.
-```{r chunk4}
+```{r chunk4, eval = FALSE}
 
 ebd_aust_mnk <- readRDS(file.path(path, "ebd_aust_mnk.RDS"))
 dim(ebd_aust_mnk) # 3521 monk parakeet observations
@@ -229,13 +239,13 @@ ebd_norl_mnk %>%
 
 ## Austin
 
-I binned checklists by weeks per year then calculated the percentage of parakeet sightings relative to other species across these bins, following an approach used by Clark (2017)<a href='#References'><sup>[2]</sup></a>. Here I used the eBird checklists with all species to calculate the frequency of monk parakeet observations relative to other species.
+I binned checklists by weeks per year then calculated the percentage of parakeet sightings relative to other species across these bins, following an approach used by Clark (2017)<a href='#References'><sup>[1]</sup></a>. Here I used the eBird checklists with all species to calculate the frequency of monk parakeet observations relative to other species.
 ```{r chunk5, eval = FALSE}
 
 ebd_aust <- read_ebd(file.path(file.path(path, "ebd_US-TX-453_200401_202001_relAug-2020"), "ebd_US-TX-453_200401_202001_relAug-2020.txt")) %>%
-  filter(grepl("Austin", locality, ignore.case = TRUE)) %>%
+  dplyr::filter(grepl("Austin", locality, ignore.case = TRUE)) %>%
   # Retain just checklists for which all species reported
-  filter(all_species_reported) 
+  dplyr::filter(all_species_reported) 
 
 # Check that scientific names are reasonable values, looks good
 ebd_aust %>% 
@@ -285,7 +295,7 @@ glimpse(ebd_aust_perc)
 
 # Get weekly checklist percentages for our sampling years in Austin
 ebd_aust_w <- ebd_aust_perc %>%
-  filter(year %in% c(2004, 2011, 2019)) %>%
+  dplyr::filter(year %in% c(2004, 2011, 2019)) %>%
   droplevels() %>%
   dplyr::mutate(
     year = as.character(year),
@@ -296,7 +306,6 @@ ebd_aust_w <- ebd_aust_perc %>%
 
 glimpse(ebd_aust_w)
 
-# x11()
 ebd_aust_w %>%
   ggplot(aes(x = week, y = perc_mnks), color = "black") +
   geom_point(shape = 21, size = 2.5, fill = "grey") +
@@ -321,12 +330,12 @@ Some weeks in 2004 had high percentages of parakeets reported in checklists comp
 
 # Check larger weekly percentages reported across years
 ebd_aust_perc %>%
-  filter(perc_mnks > 10) %>%
+  dplyr::filter(perc_mnks > 10) %>%
   kable(align = rep("c", ncol(.)))
 
 # A median of only 4 sightings of all species total were reported when weekly percentages were high for parakeets
 ebd_aust_perc %>%
-  filter(perc_mnks > 10) %>%
+  dplyr::filter(perc_mnks > 10) %>%
   pull(all_species_checklist_obs) %>% 
   median()
 
@@ -344,8 +353,8 @@ These larger weekly percentages (> 10%) are likely due to observers reporting fe
 ```{r chunk8, eval = FALSE}
 
 ebd_norl <- read_ebd(file.path(file.path(path, "ebd_US-LA-071_200401_202001_relAug-2020"), "ebd_US-LA-071_200401_202001_relAug-2020.txt")) %>%
-  filter(grepl("New Orleans", locality, ignore.case = TRUE)) %>%
-  filter(all_species_reported) 
+  dplyr::filter(grepl("New Orleans", locality, ignore.case = TRUE)) %>%
+  dplyr::filter(all_species_reported) 
 
 # Check that scientific names have reasonable strings
 ebd_norl %>% 
@@ -393,7 +402,7 @@ ebd_norl_perc <- readRDS(file.path(path, "ebd_norl_perc.RDS"))
 
 # Weekly checklist frequency across weeks per year, as a percentage
 ebd_norl_w <- ebd_norl_perc %>%
-  filter(year %in% c(2004, 2011, 2019)) %>%
+  dplyr::filter(year %in% c(2004, 2011, 2019)) %>%
   droplevels() %>%
   dplyr::mutate(
     year = as.character(year),
@@ -410,7 +419,6 @@ ebd_norl_w %>%
   group_by(year) %>%
   dplyr::summarise(n = n())
 
-# x11()
 ebd_norl_w %>%
   ggplot(aes(x = week, y = perc_mnks), color = "black") +
   geom_point(shape = 21, size = 2.5, fill = "grey") +
@@ -475,8 +483,6 @@ rect_df <- data.frame(
   city = c(rep("Austin", 3), rep("New Orleans", 2))
 )
 
-# x11()
-
 ebd_aust_norl %>%
   # Convert years to numeric to add rectangles below
   dplyr::mutate(
@@ -503,95 +509,16 @@ ebd_aust_norl %>%
     panel.grid.minor = element_blank()
   )
 
-ggsave(file.path(gpath, "HierarchicalMapping_eBirdAustinNewOrl_PopTrends.jpeg"), units = "in", width = 6.5, height = 5, dpi = 300)
-
-```
-
-```{r chunk12, echo = FALSE, eval = FALSE, include = FALSE}
-
-# A figure for Valeria's SACNAS talk
-ebd_aust_perc <- readRDS(file.path(path, "ebd_aust_perc.RDS"))  %>%
-  ungroup()
-glimpse(ebd_aust_perc)
-
-# Average weekly checklist frequency by year, as a percentage
-ebd_aust <- ebd_aust_perc %>%
-  dplyr::mutate(
-    city = "Austin"
-  ) %>%
-  dplyr::mutate(
-    year = as.character(year),
-    year = factor(year)
-  ) %>%
-  group_by(city, year) %>%
-  dplyr::summarise(
-    yr_avg = mean(perc_mnks),
-    yr_se = std_err(perc_mnks)
-  ) %>%
-  ungroup()
-
-glimpse(ebd_aust)
-
-# Make a data frame of year coordinates for adding rectangles
-rect_df <- data.frame(
-  year_xmin = c(2004, 2011, 2019),
-  year_xmax = c(2005, 2012, 2020),
-  city = rep("Austin", 3)
-)
-
-gg <- ebd_aust %>%
-  # Convert years to numeric to add rectangles below
-  dplyr::mutate(
-    year = as.numeric(as.character(year))
-  ) %>%
-  ggplot(aes(x = year, y = yr_avg), color = "black") +
-  # Add shaded rectangles for years recorded per city
-  geom_rect(data = rect_df, aes(xmin = year_xmin, xmax = year_xmax, ymin = 0, ymax = Inf), color = "gold2", fill = "gold2", inherit.aes = FALSE) +
-  geom_errorbar(aes(ymin = yr_avg - yr_se, ymax = yr_avg + yr_se), color = "black", size = 0.5, width = 0.35) +
-  geom_line(aes(group = 1), size = 0.5) +
-  geom_point(size = 3, shape = 21, fill = "gray55", color = "black", stroke = 0.25) +
-  facet_grid(cols = vars(city), switch = "y") +
-  scale_x_continuous(limits = c(2004, 2020), breaks = seq(2004, 2020, 1), labels = seq(2004, 2020, 1)) +
-  scale_y_continuous(limits = c(0, 100)) +
-  xlab("Year") +
-  ylab("Mean checklist percentage") +
-  theme_bw() +
-  theme(
-    axis.title = element_text(size = 14),
-    axis.text.y = element_text(size = 12),
-    axis.text.x = element_text(size = 10, angle = 30, vjust = 0.75),
-    strip.text = element_text(size = 14),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank()
-  )
-
-# Color strip labels by range
-g <- ggplot_gtable(ggplot_build(gg))
-stripr <- which(grepl('strip-t', g$layout$name)) # strip-l for left strips, strip-t for upper
-fills <- alpha("orange", 0.45)
-k <- 1
-for (i in stripr) {
-  j <- which(grepl('rect', g$grobs[[i]]$grobs[[1]]$childrenOrder))
-  g$grobs[[i]]$grobs[[1]]$children[[j]]$gp$fill <- fills[k]
-  k <- k+1
-}
-dev.off()
-
-tiff(file.path(gpath, "VP_SACNAS_HierarchicalMapping_eBirdAustin_PopTrends.tiff"), units = "in", width = 5.51, height = 4, res = 300) 
-grid.draw(g)
-dev.off()
+# ggsave(file.path(gpath, "HierarchicalMapping_eBirdAustinNewOrl_PopTrends.jpeg"), units = "in", width = 6.5, height = 5, dpi = 300)
 
 ```
 
 # References
 
-    1. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
-    
-    2. Clark, C.J. 2017. eBird records show substantial growth of the Allen’s Hummingbird (Selasphorus sasin sedentarius) population in urban Southern California. The Condor, 119(1), 122–130. https://doi.org/10.1650/condor-16-153.1
-    
-    3. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
+    1. Clark, C.J. 2017. eBird records show substantial growth of the Allen’s Hummingbird (Selasphorus sasin sedentarius) population in urban Southern California. The Condor, 119(1), 122–130. https://doi.org/10.1650/condor-16-153.1
 
-```{r chunk13}
+Documenting session information and software versions at the time of knitting the RMarkdown output.
+```{r echo = TRUE, eval = TRUE}
 
 sessionInfo()
 

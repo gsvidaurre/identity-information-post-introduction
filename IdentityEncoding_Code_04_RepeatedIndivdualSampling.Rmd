@@ -1,0 +1,751 @@
+---
+title: "Identity Encoding Code 04:"
+subtitle: "Assessing Repeated Individual Sampling at the Site Scale"
+author: |
+  <hr>
+  <center style="font-style:normal;">
+  <a style="font-size:22px;color:#337ab7;text-decoration: underline;"href="http://smith-vidaurre.com/">Grace Smith-Vidaurre</a><sup><span style="font-size:12px;color:black;text-decoration:none!important;">1-4*</span></sup>
+  <br>
+  <br>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">1</span></sup>Department of Biology, New Mexico State University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">2</span></sup>Laboratory of Neurogenetics of Language, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">3</span></sup>Field Research Center, Rockefeller University</center>
+  <center style="font-size:18px;font-style:normal;color:black;"><sup><span style="font-size:12px;color:black;">4</span></sup>Department of Biological Sciences, University of Cincinnati</center>
+  <br>
+  <center style="font-size:18px;"><sup style="font-size:12px;">*</sup>gsvidaurre@gmail.com</center>
+  <br>
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+---
+
+<style type="text/css">
+
+a:hover {
+  color: #23527c !important;
+}
+
+h1.title { /* Document title */
+  font-size: 32px;
+  color: black;
+  font-weight: normal;
+  text-align: center;
+}
+
+h1 {
+  color: #0E0E7D;
+  font-size: 26px;
+  font-weight: normal;
+}
+
+h2 {
+  color: #0E0E7D;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+h3 { /* Document subtitle */
+  color: #0E0E7D;
+  font-size: 28px;
+  font-weight: normal;
+  text-align: center;
+}
+
+h4 {
+  color: #0E0E7D;
+  font-size: 20px;
+  font-weight: normal;
+}
+
+h4.date { /* Date in document header */
+  font-size: 22px;
+  font-style:normal;
+  text-align: center;
+}
+
+body{ /* Normal */
+  font-size: 20px;
+}
+
+code.r{ /* Code block */
+  font-size: 20px;
+}
+</style>
+
+```{r global options, include = FALSE}
+
+knitr::opts_knit$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+knitr::opts_chunk$set(root.dir = "/home/gsvidaurre/Desktop/GitHub_repos/identity-information-post-introduction", echo = TRUE, include = TRUE, eval = TRUE)
+
+```
+
+<hr>
+
+This code accompanies the following paper in PLOS Computational Biology:
+
+Smith-Vidaurre, G., Perez-Marrufo, V., Hobson, E.A., Salinas-Melgoza, A., and T.F. Wright. Individual identity information persists in learned calls of introduced parrot populations.
+
+<hr>
+
+Here we assessed our clustering and visual classification methods for identifying potential repeated sampling of individuals at the site scale in each of the native and introduced ranges. We assessed multi-observer reliability and the number of potential repeated individuals as well as the number of calls for each of these potentially repeatedly sampled birds that were identified in each range. See the methods and appendix of the associated publication for more information about these analyses.
+
+Check out Github repositories from previous work for related analyses and code:
+
+- [gsvidaurre/strong-individual-signatures](https://github.com/gsvidaurre/strong-individual-signatures)<a href='#References'><sup>[1]</sup></a>
+
+- [gsvidaurre/simpler-signatures-post-invasion](https://github.com/gsvidaurre/simpler-signatures-post-invasion)<a href='#References'><sup>[2]</sup></a>
+
+Please cite the associated papers and code (see DOIs on GitHub) if the code or analyses in these 3 repositories are useful for your own research.
+
+Clean environment, load packages, initialize fundamental objects.
+```{r message = FALSE}
+
+rm(list = ls())
+
+X <- c("ggplot2", "pbapply",  "dplyr", "data.table", "tidyverse", "rlist", "rdrop2", "plotrix", "Rmisc", "grid", "gridExtra", "egg", "ggplotify", "pracma", "irr", "knitr")
+
+invisible(lapply(X, library, character.only = TRUE))
+
+# Suppress summarise warnings from dplyr
+options(dplyr.summarise.inform = FALSE)
+
+path <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Data"
+seed <- 401
+cores <- parallel::detectCores() - 2
+# cores
+
+# Dropbox authorization token and path
+app_path <- "/home/gsvidaurre/Desktop/GitHub_repos/vocal-learning-invasion/pot-rep-indiv-filter"
+token <- readRDS(file.path(app_path, "token.rds"))
+drop_path <- "Smith-Vidaurre_Grace/CulturalEvolution_PostInvasion/Detect_RepeatedIndividualSampling"
+gpath <- "/media/gsvidaurre/MYIOPSITTA/R/VocalLearning_PostDisruption/Graphics"
+
+```
+
+Read in the extended selection table (EST) that contains metadata and wave objects for pre-processed native and introduced range calls across the individual and site scales.
+```{r}
+
+nat_int_est <- readRDS(file.path(path, "monk_parakeet_contactCalls_rangeComparison_extSelTable.RDS"))
+glimpse(nat_int_est)
+
+```
+
+# Get Shiny classification data
+
+See the associated manuscript for more information on the Shiny app used for visual classification. Download co-authors' data on the Shiny app classifications from Dropbox.
+```{r eval = FALSE}
+
+drop_files <- drop_dir(drop_path) %>%
+  dplyr::select(name) %>%
+  pull(name)
+
+drop_files
+
+# Iterate over the files and download them from Dropbox one by one
+invisible(pblapply(1:length(drop_files), function(x){
+  drop_download(path = file.path(drop_path, drop_files[x]), dtoken = token, local_path = path, overwrite = TRUE)
+}))
+
+```
+
+Read in the .json files and concatenate results into a single data frame.
+```{r}
+
+# Retain each .fson file for co-author. For VP, used the most recent file vp-2020-05-18_18-50-40.json
+file_nms <- list.files(path, pattern = ".json$")
+file_nms
+
+users <- sapply(1:length(file_nms), function(i){
+  strsplit(file_nms[i], split = "-")[[1]][1]
+})
+users
+
+```
+
+# Training accuracy
+
+Training accuracy summary statistics across users. Here, pulled training classification accuracy from the last training round before testing only. Note that ASM's training data was only partially saved (see below).
+```{r}
+
+# Extract calls across classes and compare to the number of input calls
+# Initialize testing data  
+train_imgs <- read.csv(file.path(app_path, "training_images.csv"))
+# glimpse(train_imgs)
+
+train_accur <- rbindlist(lapply(1:length(users), function(x){
+  
+  res <- list.load(file.path(path, file_nms[x]))
+  # str(res)
+  
+  # Get user accuracy from the very last round of training
+  train_nms <- names(res)[-grep("Testing", names(res))]
+  train_nm <- train_nms[length(train_nms)]
+  # train_nm
+  
+  # accur_list <- rbindlist(lapply(1:length(train_nm), function(i){
+  
+  tmp <- res[[train_nm]][grep("accuracy", names(res[[train_nm]]))]
+  # names(tmp)
+  # str(tmp)
+  
+  # Get the user (not baseline) accuracies
+  wh <- which(sapply(tmp[[1]], function(X){
+    grepl("user", X$accur_type)
+  }))
+  
+  # These are user classification accuracies per known repeatedly sampled individual per training site
+  tmp <- tmp[[1]][wh]
+  # str(tmp)
+  
+  # Iterate over birds to extract classification accuracy (percent right)
+  tmp2 <- rbindlist(lapply(1:length(tmp), function(z){
+    
+    tmp_df <- data.frame(observer = users[x]) %>%
+      dplyr::mutate(
+        training_iteration = train_nm,
+        site_year = tmp[[z]][[grep("train_page", names(tmp[[z]]))]],
+        indiv = tmp[[z]][[grep("indiv", names(tmp[[z]]))]], 
+        percent_right = tmp[[z]][[grep("percent_right", names(tmp[[z]]))]]
+      )
+    
+    return(tmp_df)
+    
+  }))
+  
+  return(tmp2)
+  
+}))
+
+glimpse(train_accur)
+
+```
+
+Get training accuracy summary statistics.
+
+Mean accuracy across individuals and observers. Very similar even when ASM's partial training data is dropped.
+```{r}
+
+# With ASM training data
+train_accur %>%
+  dplyr::summarise(
+    overall_mean_accur = round(mean(percent_right), 2),
+    se_accur = round(std_err(percent_right), 2)
+  )
+
+# Without ASM training data: results are very similar
+train_accur %>%
+  dplyr::filter(observer != "asm") %>%
+  droplevels() %>%
+  dplyr::summarise(
+    overall_mean_accur = round(mean(percent_right), 2),
+    se_accur = round(std_err(percent_right), 2)
+  )
+
+```
+
+Mean and SE accuracy across individuals by observer.
+```{r}
+
+train_accur %>%
+  group_by(observer) %>%
+  dplyr::summarise(
+    mean_accur = round(mean(percent_right), 2),
+    se_accur = round(std_err(percent_right), 2)
+  )
+
+```
+
+# Validation analyses
+
+## Multi-observer reliability
+
+For the analyses below, only considered classes as potential repeated individuals if assigned more than one call. Use the 4 sites evaluated across users to calculate multiobserver reliability. These 4 sites were: CISN_2017 (native, smaller sample size), BALL_2004 (introduced, smaller sample size), SOCC_2019 (introduced, large sample size), SOCC_2004 (introduced, large sample size). I thought I had picked 2 introduced and 2 native, but had forgotten about that balancing when trying to pick by sample sizes. 
+```{r}
+
+mo_sites <- c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")
+
+multi_obsv <- rbindlist(lapply(1:length(users), function(x){
+  
+  res <- list.load(file.path(path, file_nms[x]))
+  
+  # Get the predictions for sites assessed across observers
+  pred_dats <- res[["Testing"]][grep(paste(paste("^", mo_sites, "$", sep = ""), collapse = "|"), names(res[["Testing"]]))]
+  # str(pred_dats)
+  
+  # Return a data frame per observer, with one row per call
+  
+  # Per site-year, get the calls in each class
+  pred_df <- rbindlist(lapply(1:length(pred_dats), function(i){
+    
+    # Get classes, class_0 was reserved for calls considered as not belonging to any potential individuals 
+    classes <- names(pred_dats[[i]][[1]])[grep("Potential|class_0", names(pred_dats[[i]][[1]]))]
+    # classes  
+    
+    # Get the calls assigned to each class (potential repeated individual)
+    class_df <- rbindlist(lapply(1:length(classes), function(z){
+      
+      calls <- strsplit(as.character(pred_dats[[i]][[1]][grep(classes[z], names(pred_dats[[i]][[1]]))]), split = ";")[[1]]
+      
+      return(data.frame(class = classes[z], call = calls))
+      
+    }))
+    # glimpse(class_df)
+    
+    return(
+      class_df %>%
+        dplyr::mutate(
+          observer = users[x],
+          site_year = names(pred_dats)[i]
+        ) %>%
+        dplyr::select(
+          observer, site_year, call, class
+        )
+    )
+    
+  }))  
+  
+  return(pred_df)
+  
+}))
+
+glimpse(multi_obsv)
+
+```
+
+Multi-observer summary statistics. How many potential repeated individuals (classes) identified per site-year across observers? Only consider individuals assigned more than one call.
+```{r}
+
+unique(multi_obsv$class)
+
+mo_classes <- multi_obsv %>%
+  dplyr::mutate(
+    class = factor(class)
+  ) %>%
+  # Remove class_0, which was reserved for calls from "unique" individuals
+  dplyr::filter(class != "class_0") %>%
+  # Only retain potental repeated individuals that were assigned more than one call
+  group_by(site_year, observer, class) %>%
+  dplyr::summarise(n_calls = length(call)) %>%
+  ungroup() %>%
+  dplyr::filter(n_calls > 1) %>%
+  group_by(site_year, observer) %>%
+  dplyr::summarise(num_pot_rep_indiv = n_distinct(class)) %>%
+  ungroup()
+
+# Widen the data for ease of comparison
+mo_classes %>%
+  pivot_wider(
+    names_from = "observer",
+    values_from = "num_pot_rep_indiv"
+  )
+
+```
+
+There was a lot of variation across observers in the degree of splitting versus lumping per site-year. 
+
+Calculated Fleiss' Kappa for multiple observers. Values closer to 1 indicate higher consistency. Here, kappa was -0.0353, not only small but also negative, indicating very low consistency across observers per site-year.
+```{r}
+
+# All 4 multi-observer site-years
+mo_classes %>%
+  # Change to n*m matrix (n subjects in rows, m raters in columns)
+  pivot_wider(
+    names_from = "observer",
+    values_from = "num_pot_rep_indiv"
+  ) %>%
+  dplyr::select(-c(site_year)) %>%
+  as.matrix() %>%
+  kappam.fleiss(exact = FALSE, detail = FALSE)
+
+```
+
+Lumping and splitting across observers. 
+```{r}
+
+# Colors by range
+fills <- scales::alpha(c("navy", "orange"), 0.85)
+
+# Get the mean number of potential repeated individuals per site
+# Will be used to make one line per facet in plot below
+dum_df <- multi_obsv %>%
+  dplyr::mutate(
+    site_year = as.character(site_year),
+    range = ifelse(grepl("CISN", site_year), "Native", "Introduced"), 
+    site_year = factor(site_year, levels = c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")),
+    range = factor(range, levels = c("Native", "Introduced"))
+  ) %>%
+  # Remove class_0, which was reserved for calls from "unique" individuals
+  dplyr::filter(class != "class_0") %>%
+  # Only retain potental repeated individuals that were assigned more than one call
+  group_by(site_year, observer, class) %>%
+  dplyr::summarise(n_calls = length(call)) %>%
+  ungroup() %>%
+  dplyr::filter(n_calls > 1) %>%
+  group_by(site_year, observer) %>%
+  dplyr::summarise(num_pot_rep_indiv = n_distinct(class)) %>%
+  ungroup() %>%
+  group_by(site_year) %>%
+  dplyr::summarise(mean_indivs = mean(num_pot_rep_indiv)) %>%
+  ungroup()
+dum_df
+
+multi_obsv %>%
+  dplyr::mutate(
+    site_year = as.character(site_year),
+    range = ifelse(grepl("CISN", site_year), "Native", "Introduced"), 
+    site_year = factor(site_year, levels = c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")),
+    range = factor(range, levels = c("Native", "Introduced"))
+  ) %>%
+  # Remove class_0, which was reserved for calls from "unique" individuals
+  dplyr::filter(class != "class_0") %>%
+  # Only retain potental repeated individuals that were assigned more than one call
+  group_by(range, site_year, observer, class) %>%
+  dplyr::summarise(n_calls = length(call)) %>%
+  ungroup() %>%
+  dplyr::filter(n_calls > 1) %>%
+  group_by(range, site_year, observer) %>%
+  dplyr::summarise(num_pot_rep_indiv = n_distinct(class)) %>%
+  ungroup() %>%
+  ggplot(aes(x = observer, y = num_pot_rep_indiv)) +
+  geom_col(aes(fill = range)) +
+  facet_grid(~ site_year) +
+  geom_hline(data = dum_df, aes(yintercept = mean_indivs), linetype = "dotted", color = "black", size = 0.5) +
+  scale_fill_manual(values = fills) +
+  guides(fill = guide_legend(title = "Range")) +
+  xlab("Observer") +
+  ylab("Number of Potential \n Repeated Individuals") +
+  # guides(fill = guide_legend(override.aes = list(size = 0.1))) +
+  theme_bw() +
+  theme(
+    strip.text = element_text(size = 10),
+    axis.title = element_text(size = 10),
+    axis.text = element_text(size = 9),
+    panel.grid.major = element_line(size = 0.15),
+    panel.grid.minor = element_line(size = 0.15),
+    axis.ticks = element_line(size = 0.15),
+    legend.position = "top",
+    legend.key.height = unit(0.35, "line"),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 10),
+    legend.margin = margin(2, 2, 2, 2),
+    legend.box.margin = margin(-5, -5, -5, -5)
+  )
+
+```
+
+# Summary statistics for the main text
+
+Did we identify more potential repeated individuals for the introduced range, and more calls per each of these individuals? Get the potential repeated individuals across users.
+```{r}
+
+file_nms <- list.files(pattern = ".json$", path)
+file_nms
+
+users <- sapply(1:length(file_nms), function(i){
+  strsplit(file_nms[i], split = "-")[[1]][1]
+})
+users
+
+# x <- 1
+# i <- 12
+# z <- 1
+user_res_df <- rbindlist(pblapply(1:length(users), function(x){
+  
+  res <- list.load(file.path(path, file_nms[x]))
+  # str(res)
+  
+  sy <- names(res[["Testing"]])
+  
+  # i <- 1
+  res_df <- rbindlist(lapply(1:length(sy), function(i){
+    
+    # Bind list objects together into a wide data frame
+    tmp_df <- do.call("cbind.data.frame", res[["Testing"]][[sy[i]]][[1]])
+    # glimpse(tmp_df)
+    
+    # Convert to long format ot facilitate combining results across users
+    tmp_df2 <- tmp_df %>%
+      pivot_longer(cols = names(tmp_df)[grep("class_0|Potential_Individual", names(tmp_df))], names_to = "Class", values_to = "Call_image_files") %>%
+      dplyr::mutate(
+        Call_image_files = as.character(Call_image_files)
+      )
+    
+    # glimpse(tmp_df2)
+    
+    # Iterate over potential repeated individuals and return all calls
+    # z <- 1
+    tmp_df3 <- rbindlist(lapply(1:nrow(tmp_df2), function(z){
+      
+      # Extract the individual filenames, remove the "-1.jpeg" suffix for grepping in EST later
+      calls <- gsub("-1.jpeg$", "", strsplit(tmp_df2$Call_image_files[z], split = ";")[[1]])
+      # calls
+      
+      # Return a data frame that has one row per call
+      return(data.frame(login_username = tmp_df2$login_username[z], site_year = tmp_df2$page[z], Class = tmp_df2$Class[z], sound.files = calls))
+      
+    }))
+    
+    return(tmp_df3)
+    
+  }))  
+  
+  return(res_df)
+  
+}))
+
+glimpse(user_res_df)
+# user_res_df %>%
+# View()
+
+```
+
+## Repeated individual summary statistics per range
+
+```{r echo = TRUE, eval = TRUE}
+
+# Get number of calls per range from Shiny prediction module calls
+# Note that there's one unique sound file per row, multiobserver sites were encoded with all observer names in the co-author column
+shiny_prediction_module_est <- readRDS(file.path(path, "shiny_potrepindiv_prediction_module_est.RDS")) %>% 
+  dplyr::mutate(
+    range = gsub("Invasive", "Introduced", range)
+  )
+glimpse(shiny_prediction_module_est)
+
+shiny_prediction_module_est %>% 
+  pull(range) %>% 
+  unique()
+
+# The number of sites per range used for these summary statistics
+shiny_prediction_module_est %>% 
+  dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")) %>%
+  distinct(range, site_year) %>% 
+  group_by(range) %>% 
+  dplyr::summarise(
+    n_site_years = n()
+  )
+
+```
+
+### Gaussian mixture modelling
+
+How many potential repeated individuals were identified on average per range by Gaussian mixture modeling? Here, find unique potential repeated individuals (clusters) that have more than one call, then get mean and standard error of the number of repeated individuals identified across site-years and range per range.
+```{r}
+
+# Not grouping here by co-author initials since I'm interested in statistics prior to classification, but drop the multiobserver sites for now
+# Get unique potential repeated individuals that have more than one call
+shiny_prediction_module_est %>%
+  dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")) %>% 
+  # Get the number of calls assigned to each cluster identified per range and site-year
+  group_by(range, site_year, cluster) %>%
+  dplyr::summarise(
+    n_calls = length(sound.files)
+  ) %>%
+  # Retain clusters that were assigned more than 1 call
+  dplyr::filter(n_calls > 1) %>%
+  # Rejoin to the full data frame to regain sound files
+  inner_join(
+    shiny_prediction_module_est %>% 
+      dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")),
+    by = c("range", "site_year", "cluster")
+  ) %>%
+  # How many clusters were identified per site-year?
+  group_by(range, site_year) %>%
+  dplyr::summarise(
+    n_clust = n_distinct(cluster)
+  ) %>%
+  # Mean and standard error per range?
+  group_by(range) %>%
+  dplyr::summarise(
+    mean_clusters = round(mean(n_clust), 2),
+    se_clusters = round(std_err(n_clust), 2)
+  )
+
+```
+
+How calls were attributed to potential repeated individuals were identified on average per range by Gaussian mixture modeling? Here, find unique potential repeated individuals (clusters) that have more than one call, then get mean and standard error of the number calls attributed to repeated individuals identified across site-years and range per range.
+```{r}
+
+shiny_prediction_module_est %>%
+  dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")) %>% 
+  # Get the number of calls assigned to each cluster identified per range and site-year
+  group_by(range, site_year, cluster) %>%
+  dplyr::summarise(
+    n_calls = length(sound.files)
+  ) %>%
+  # Retain clusters that were assigned more than 1 call
+  dplyr::filter(n_calls > 1) %>%
+  # Rejoin to the full data frame to regain sound files
+  inner_join(
+    shiny_prediction_module_est %>% 
+      dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")),
+    by = c("range", "site_year", "cluster")
+  ) %>%
+  # How many clusters were identified per site-year?
+  group_by(range, site_year) %>%
+  dplyr::summarise(
+    n_calls = length(sound.files)
+  ) %>%
+  # Mean and standard error per range?
+  group_by(range) %>%
+  dplyr::summarise(
+    mean_calls = round(mean(n_calls), 2),
+    se_calls = round(std_err(n_calls), 2)
+  )
+
+```
+
+### Visual classification
+
+How many total potential repeated individuals were identified on average per range during visual classification? Here, find unique potential repeated individuals that have more than one call.
+
+Total number of potential repeated individuals identified per range.
+```{r}
+
+glimpse(user_res_df)
+
+# Checking: After dropping the sites assessed across observers, each site-year represents a unique site-year and observer combination. Looks good
+user_res_df %>% 
+  dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")) %>%
+  distinct(login_username, site_year)
+
+# The number of sites per range used for these summary statistics
+user_res_df %>% 
+  dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")) %>%
+  inner_join(
+    nat_int_est %>%
+      as_tibble() %>%
+      dplyr::select(c(range, sound.files)),
+    by = "sound.files"
+  ) %>%
+  distinct(range, site_year) %>% 
+  group_by(range) %>% 
+  dplyr::summarise(
+    n_site_years = n()
+  )
+
+```
+
+Mean and standard error of the number of potential repeatedly sampled individuals across site-years per range.
+```{r}
+
+user_res_df %>%
+  dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")) %>%
+  # Drop class_0 calls
+  dplyr::filter(Class != "class_0") %>%
+  inner_join(
+    nat_int_est %>%
+      as_tibble() %>%
+      dplyr::select(c(range, sound.files)),
+    by = "sound.files"
+  ) %>% 
+  dplyr::mutate(
+    uniq_id = paste(range, site_year, Class, sep = "_")
+  ) %>%
+  group_by(range, site_year, uniq_id) %>%
+  dplyr::summarise(
+    n_calls = length(sound.files)
+  ) %>%
+  ungroup() %>%
+  dplyr::filter(n_calls > 1) %>%
+  group_by(range, site_year) %>%
+  dplyr::summarise(
+    n_pot_rep_indivs = length(uniq_id)
+  ) %>%
+  group_by(range) %>%
+  dplyr::summarise(
+    mean_npri = round(mean(n_pot_rep_indivs), 2),
+    se_npri = round(std_err(n_pot_rep_indivs), 2)
+  )
+
+```
+
+Mean and standard error of the number of calls per potential repeatedly sampled individuals across site-years per range.
+```{r}
+
+user_res_df %>%
+  dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")) %>%
+  # Drop class_0 calls
+  dplyr::filter(Class != "class_0") %>%
+  inner_join(
+    nat_int_est %>%
+      as_tibble() %>% 
+      dplyr::select(c(range, sound.files)),
+    by = "sound.files"
+  ) %>% 
+  dplyr::mutate(
+    uniq_id = paste(range, site_year, Class, sep = "_")
+  ) %>%
+  group_by(range, site_year, uniq_id) %>%
+  dplyr::summarise(
+    n_calls = length(sound.files)
+  ) %>%
+  ungroup() %>%
+  dplyr::filter(n_calls > 1) %>%
+  group_by(range) %>%
+  dplyr::summarise(
+    mean_calls = round(mean(n_calls), 2),
+    se_calls = round(std_err(n_calls), 2)
+  )
+
+```
+
+More calls were attributed to potential repeated indivduals in the introduced range. But could this be due to some observers handling more introduced range site-years than others? The number of site-years assessed per observer should have been pretty similar given our random sampling.
+```{r}
+
+# Similar numbers of site-years were assessed per range across observers
+user_res_df %>%
+  dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")) %>%
+  inner_join(
+    nat_int_est %>%
+      dplyr::select(c(range, sound.files)),
+    by = "sound.files"
+  ) %>% 
+  group_by(range, login_username) %>%
+  dplyr::summarise(
+    num_sy = n_distinct(site_year)
+  ) %>%
+  pivot_wider(
+    names_from = "range",
+    values_from = "num_sy"
+  )
+
+```
+
+Mean and standard error of site-years assessed across observers per range.
+```{r}
+
+user_res_df %>%
+  dplyr::filter(!site_year %in% c("CISN_2017", "BALL_2004", "SOCC_2004", "SOCC_2019")) %>%
+  inner_join(
+    nat_int_est %>%
+      dplyr::select(c(range, sound.files)),
+    by = "sound.files"
+  ) %>% 
+  group_by(range, login_username) %>%
+  dplyr::summarise(
+    num_sy = n_distinct(site_year)
+  ) %>%
+  dplyr::summarise(
+    mean_sy = round(mean(num_sy), 2),
+    se_sy = round(std_err(num_sy), 2)
+  )
+
+```
+
+# References
+
+    1. Smith-Vidaurre, G., Araya-Salas, M., and T.F. Wright. 2020. Individual signatures outweigh social group identity in contact calls of a communally nesting parrot. Behavioral Ecology 31(2), 448-458. https://doi.org/10.1093/beheco/arz202
+
+    2. Smith-Vidaurre, G., Perez-Marrufo, V., & Wright, T. F. 2021. Individual vocal signatures show reduced complexity following invasion. Animal Behavior, 179, 15–39. https://doi.org/10.1016/j.anbehav.2021.06.020
+
+Documenting session information and software versions at the time of knitting the RMarkdown output.
+```{r echo = TRUE, eval = TRUE}
+
+sessionInfo()
+
+```
